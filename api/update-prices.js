@@ -7,25 +7,27 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    const { data, error } = await supabase
+    const { data: items } = await supabase
       .from('portfolio_items')
       .select('*')
 
-    if (error) {
-      return res.status(500).json({
-        step: "supabase error",
-        error: error.message
-      })
-    }
+    const item = items[0]
+
+    const response = await fetch(item.cardmarket_url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0'
+      }
+    })
+
+    const html = await response.text()
 
     return res.status(200).json({
-      step: "supabase works",
-      count: data.length
+      status: response.status,
+      first500chars: html.slice(0, 500)
     })
 
   } catch (err) {
     return res.status(500).json({
-      step: "crashed before query",
       error: err.message
     })
   }
