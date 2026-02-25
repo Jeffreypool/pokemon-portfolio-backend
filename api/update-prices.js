@@ -27,16 +27,16 @@ export default async function handler(req, res) {
 
       try {
 
-        const query = encodeURIComponent(`name:"${item.name}"`)
+        const query = encodeURIComponent(`name:${item.name}`)
 
-        const response = await fetch(
-          `https://api.pokemontcg.io/v2/cards?q=${query}`,
-          {
-            headers: {
-              'X-Api-Key': process.env.POKEMON_TCG_API_KEY
-            }
-          }
-        )
+const response = await fetch(
+  `https://api.pokemontcg.io/v2/cards?q=${query}&pageSize=1`,
+  {
+    headers: {
+      'X-Api-Key': process.env.POKEMON_TCG_API_KEY
+    }
+  }
+)
 
         if (!response.ok) {
           results.push({
