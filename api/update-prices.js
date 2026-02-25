@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   try {
     // 1️⃣ Haal alle items op uit Supabase
     const { data: items, error } = await supabase
-      .from('items')
+      .from('portfolio_items')
       .select('*')
 
     if (error) {
