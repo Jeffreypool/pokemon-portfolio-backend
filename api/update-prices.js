@@ -1,80 +1,90 @@
 import { createClient } from '@supabase/supabase-js'
 
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
+
 export default async function handler(req, res) {
   try {
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    )
-
-    // 1️⃣ Haal alle portfolio items op
-    const { data: items, error: fetchError } = await supabase
-      .from('portfolio_items')
+    // 1️⃣ Haal alle items op uit Supabase
+    const { data: items, error } = await supabase
+      .from('items')
       .select('*')
 
-    if (fetchError) {
-      return res.status(500).json({ error: fetchError.message })
+    if (error) {
+      return res.status(500).json({ error: error.message })
     }
 
     const results = []
 
-    // 2️⃣ Loop door elk item
+    // 2️⃣ Loop door alle items
     for (const item of items) {
-
-      console.log(`Fetching price for ${item.name}`)
-
-      const response = await fetch(item.cardmarket_url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0"
-        }
-      })
-
-      const html = await response.text()
-
-      // 3️⃣ Zoek eerste euro prijs in HTML (MVP)
-      const priceMatch = html.match(/€\s?(\d+[\.,]?\d*)/)
-
-      if (!priceMatch) {
+      if (!item.cardmarket_url) {
         results.push({
           item: item.name,
-          status: "No price found"
+          status: 'No Cardmarket URL'
         })
         continue
       }
 
-      const price = parseFloat(priceMatch[1].replace(',', '.'))
-
-      // 4️⃣ Sla snapshot op
-      const { error: insertError } = await supabase
-        .from('price_snapshots')
-        .insert({
-          portfolio_item_id: item.id,
-          lowest_english_price: price
+      try {
+        // 3️⃣ Fetch de HTML van Cardmarket
+        const response = await fetch(item.cardmarket_url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0'
+          }
         })
 
-      if (insertError) {
+        const html = await response.text()
+
+        // 4️⃣ Zoek prijs (bijv: 18.500,00 €)
+        const priceMatch = html.match(
+          /(\d{1,3}(?:\.\d{3})*,\d{2})\s?€/
+        )
+
+        if (!priceMatch) {
+          results.push({
+            item: item.name,
+            status: 'No price found'
+          })
+          continue
+        }
+
+        // 5️⃣ Zet om naar normaal getal
+        const price = parseFloat(
+          priceMatch[1]
+            .replace(/\./g, '')  // verwijder duizendtallen
+            .replace(',', '.')   // vervang komma door punt
+        )
+
+        // 6️⃣ Update Supabase
+        await supabase
+          .from('items')
+          .update({ current_price: price })
+          .eq('id', item.id)
+
         results.push({
           item: item.name,
-          status: "DB insert failed"
+          price: price
         })
-      } else {
+
+      } catch (err) {
         results.push({
           item: item.name,
-          status: "Updated",
-          price
+          status: 'Error fetching price'
         })
       }
-
-      // 5️⃣ Kleine delay (veiligheid)
-      await new Promise(resolve => setTimeout(resolve, 3000))
     }
 
     return res.status(200).json({
-      message: "Price update finished",
+      message: 'Price update finished',
       results
     })
 
   } catch (err) {
-    return res.status(500).json({ error: err.message })
+    return res.status(500).json({
+      error: err.message
+    })
   }
 }
