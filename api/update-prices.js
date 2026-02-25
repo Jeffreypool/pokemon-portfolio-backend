@@ -37,8 +37,8 @@ export default async function handler(req, res) {
 
         // 🔎 Zoek specifiek naar "From" prijs
         const match = html.match(
-          /From<\/dt><dd[^>]*>([\d\.,]+)\s?€/
-        )
+  /From<\/dt>\s*<dd[^>]*>([\d\.,]+)\s?€/
+)
 
         if (!match) {
           results.push({
