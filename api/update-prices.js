@@ -39,16 +39,22 @@ export default async function handler(req, res) {
 
         const html = await response.text()
 
-        // 4️⃣ Zoek eerste euro prijs in HTML
-        const priceMatch = html.match(/([\d\.,]+)\s?€/)
+       // Zoek specifiek naar "From" prijs
+const priceMatch = html.match(/From<\/dt><dd[^>]*>([\d\.,]+)\s?€/i)
 
-        if (!priceMatch) {
-          results.push({
-            item: item.name,
-            status: 'No price found'
-          })
-          continue
-        }
+if (!priceMatch) {
+  results.push({
+    item: item.name,
+    status: 'No price found'
+  })
+  continue
+}
+
+const price = parseFloat(
+  priceMatch[1]
+    .replace(/\./g, '')   // verwijder duizendpunten
+    .replace(',', '.')    // komma → punt
+)
 
         // 5️⃣ Zet prijs correct om naar float
         const price = parseFloat(
