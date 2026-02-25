@@ -7,7 +7,6 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-
     const { data: items, error } = await supabase
       .from('portfolio_items')
       .select('*')
@@ -19,57 +18,41 @@ export default async function handler(req, res) {
     const results = []
 
     for (const item of items) {
-
-      if (!item.name) {
-        results.push({ item: item.id, status: 'No name' })
+      if (!item.cardmarket_url) {
+        results.push({
+          item: item.name,
+          status: 'No URL'
+        })
         continue
       }
 
       try {
+        const response = await fetch(item.cardmarket_url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0'
+          }
+        })
 
-        const query = encodeURIComponent(`name:${item.name}`)
+        const html = await response.text()
 
-const response = await fetch(
-  `https://api.pokemontcg.io/v2/cards?q=${query}&pageSize=1`,
-  {
-    headers: {
-      'X-Api-Key': process.env.POKEMON_TCG_API_KEY
-    }
-  }
-)
+        // 🔎 Zoek specifiek naar "From" prijs
+        const match = html.match(
+          /From<\/dt><dd[^>]*>([\d\.,]+)\s?€/
+        )
 
-        if (!response.ok) {
+        if (!match) {
           results.push({
             item: item.name,
-            status: `API error ${response.status}`
+            status: 'No price found'
           })
           continue
         }
 
-        const data = await response.json()
-
-        if (!data.data || data.data.length === 0) {
-          results.push({
-            item: item.name,
-            status: 'No card found'
-          })
-          continue
-        }
-
-        const card = data.data[0]
-
-        const price =
-          card.tcgplayer?.prices?.holofoil?.market ||
-          card.tcgplayer?.prices?.normal?.market ||
-          null
-
-        if (!price) {
-          results.push({
-            item: item.name,
-            status: 'No price available'
-          })
-          continue
-        }
+        const price = parseFloat(
+          match[1]
+            .replace(/\./g, '')
+            .replace(',', '.')
+        )
 
         await supabase
           .from('portfolio_items')
@@ -78,13 +61,13 @@ const response = await fetch(
 
         results.push({
           item: item.name,
-          price: price
+          price
         })
 
       } catch (err) {
         results.push({
           item: item.name,
-          status: err.message
+          status: 'Fetch failed'
         })
       }
     }
