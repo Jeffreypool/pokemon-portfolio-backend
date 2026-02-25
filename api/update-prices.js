@@ -7,7 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // 1️⃣ Haal alle items op uit Supabase
+    // 1️⃣ Haal alle portfolio items op
     const { data: items, error } = await supabase
       .from('portfolio_items')
       .select('*')
@@ -20,6 +20,7 @@ export default async function handler(req, res) {
 
     // 2️⃣ Loop door alle items
     for (const item of items) {
+
       if (!item.cardmarket_url) {
         results.push({
           item: item.name,
@@ -29,7 +30,7 @@ export default async function handler(req, res) {
       }
 
       try {
-        // 3️⃣ Fetch de HTML van Cardmarket
+        // 3️⃣ Fetch HTML van Cardmarket
         const response = await fetch(item.cardmarket_url, {
           headers: {
             'User-Agent': 'Mozilla/5.0'
@@ -38,10 +39,8 @@ export default async function handler(req, res) {
 
         const html = await response.text()
 
-        // 4️⃣ Zoek prijs (bijv: 18.500,00 €)
-        const priceMatch = html.match(
-          /(\d{1,3}(?:\.\d{3})*,\d{2})\s?€/
-        )
+        // 4️⃣ Zoek eerste euro prijs in HTML
+        const priceMatch = html.match(/([\d\.,]+)\s?€/)
 
         if (!priceMatch) {
           results.push({
@@ -51,18 +50,34 @@ export default async function handler(req, res) {
           continue
         }
 
-        // 5️⃣ Zet om naar normaal getal
+        // 5️⃣ Zet prijs correct om naar float
         const price = parseFloat(
           priceMatch[1]
-            .replace(/\./g, '')  // verwijder duizendtallen
-            .replace(',', '.')   // vervang komma door punt
+            .replace(/\./g, '')   // verwijder duizendpunten
+            .replace(',', '.')    // zet komma om naar punt
         )
 
+        if (isNaN(price)) {
+          results.push({
+            item: item.name,
+            status: 'Invalid price format'
+          })
+          continue
+        }
+
         // 6️⃣ Update Supabase
-        await supabase
-          .from('items')
+        const { error: updateError } = await supabase
+          .from('portfolio_items')
           .update({ current_price: price })
           .eq('id', item.id)
+
+        if (updateError) {
+          results.push({
+            item: item.name,
+            status: 'Database update failed'
+          })
+          continue
+        }
 
         results.push({
           item: item.name,
