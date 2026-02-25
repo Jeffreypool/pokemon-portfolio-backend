@@ -6,80 +6,22 @@ const supabase = createClient(
 )
 
 export default async function handler(req, res) {
-  try {
-    const { data: items, error } = await supabase
-      .from('portfolio_items')
-      .select('*')
+  const { data: items } = await supabase
+    .from('portfolio_items')
+    .select('*')
 
-    if (error) {
-      return res.status(500).json({ error: error.message })
+  const item = items[0]
+
+  const response = await fetch(item.cardmarket_url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0'
     }
+  })
 
-    const results = []
+  const html = await response.text()
 
-    for (const item of items) {
-      if (!item.cardmarket_url) {
-        results.push({
-          item: item.name,
-          status: 'No URL'
-        })
-        continue
-      }
-
-      try {
-        const response = await fetch(item.cardmarket_url, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0'
-          }
-        })
-
-        const html = await response.text()
-
-        // Pak de "From" prijs (werkt ook met whitespace/newlines)
-        const match = html.match(
-          /From<\/dt>\s*<dd[^>]*>\s*([\d\.,]+)\s?€/i
-        )
-
-        if (!match) {
-          results.push({
-            item: item.name,
-            status: 'No price found'
-          })
-          continue
-        }
-
-        const price = parseFloat(
-          match[1]
-            .replace(/\./g, '')
-            .replace(',', '.')
-        )
-
-        await supabase
-          .from('portfolio_items')
-          .update({ current_price: price })
-          .eq('id', item.id)
-
-        results.push({
-          item: item.name,
-          price: price
-        })
-
-      } catch (err) {
-        results.push({
-          item: item.name,
-          status: 'Fetch failed'
-        })
-      }
-    }
-
-    return res.status(200).json({
-      message: 'Price update finished',
-      results
-    })
-
-  } catch (err) {
-    return res.status(500).json({
-      error: err.message
-    })
-  }
+  return res.status(200).json({
+    status: response.status,
+    first1000chars: html.substring(0, 1000)
+  })
 }
