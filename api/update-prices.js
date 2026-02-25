@@ -6,16 +6,27 @@ const supabase = createClient(
 )
 
 export default async function handler(req, res) {
-  const { data, error } = await supabase
-    .from('portfolio_items')
-    .select('*')
+  try {
+    const { data, error } = await supabase
+      .from('portfolio_items')
+      .select('*')
 
-  if (error) {
-    return res.status(500).json({ error: error.message })
+    if (error) {
+      return res.status(500).json({
+        step: "supabase error",
+        error: error.message
+      })
+    }
+
+    return res.status(200).json({
+      step: "supabase works",
+      count: data.length
+    })
+
+  } catch (err) {
+    return res.status(500).json({
+      step: "crashed before query",
+      error: err.message
+    })
   }
-
-  return res.status(200).json({
-    message: "supabase works",
-    count: data.length
-  })
 }
