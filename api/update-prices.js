@@ -35,10 +35,10 @@ export default async function handler(req, res) {
 
         const html = await response.text()
 
-        // 🔎 Zoek specifiek naar "From" prijs
+        // Pak de "From" prijs (werkt ook met whitespace/newlines)
         const match = html.match(
-  /From<\/dt>\s*<dd[^>]*>([\d\.,]+)\s?€/
-)
+          /From<\/dt>\s*<dd[^>]*>\s*([\d\.,]+)\s?€/i
+        )
 
         if (!match) {
           results.push({
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
 
         results.push({
           item: item.name,
-          price
+          price: price
         })
 
       } catch (err) {
