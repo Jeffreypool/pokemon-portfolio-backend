@@ -7,6 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
+
     const { data: items, error } = await supabase
       .from('portfolio_items')
       .select('*')
@@ -19,15 +20,8 @@ export default async function handler(req, res) {
 
     for (const item of items) {
 
-      if (!item.name) {
-        results.push({
-          item: item.id,
-          status: 'No name found'
-        })
-        continue
-      }
-
       try {
+
         const response = await fetch(
           `https://api.pokemontcg.io/v2/cards?q=name:"${item.name}"`,
           {
@@ -37,53 +31,23 @@ export default async function handler(req, res) {
           }
         )
 
-        const data = await response.json()
+        const raw = await response.text()
 
-        if (!data.data || data.data.length === 0) {
-          results.push({
-            item: item.name,
-            status: 'No card found'
-          })
-          continue
-        }
-
-        const card = data.data[0]
-
-        const price =
-          card.tcgplayer?.prices?.holofoil?.market ||
-          card.tcgplayer?.prices?.normal?.market ||
-          null
-
-        if (!price) {
-          results.push({
-            item: item.name,
-            status: 'No price available'
-          })
-          continue
-        }
-
-        await supabase
-          .from('portfolio_items')
-          .update({ current_price: price })
-          .eq('id', item.id)
-
-        results.push({
-          item: item.name,
-          price: price
+        // 👇 BELANGRIJK: laat zien wat API terugstuurt
+        return res.status(200).json({
+          status: response.status,
+          first1000chars: raw.substring(0, 1000)
         })
 
       } catch (err) {
-        results.push({
-          item: item.name,
-          status: 'Error fetching price'
+
+        return res.status(500).json({
+          error: err.message,
+          stack: err.stack
         })
+
       }
     }
-
-    return res.status(200).json({
-      message: 'Price update finished',
-      results
-    })
 
   } catch (err) {
     return res.status(500).json({
