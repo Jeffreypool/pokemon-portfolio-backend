@@ -1,137 +1,142 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Pokemon Portfolio</title>
+  <title>Pokemon Investment Portfolio</title>
   <meta charset="UTF-8" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@400;600;700&display=swap');
 
     body {
+      margin: 0;
+      padding: 60px;
+      background: radial-gradient(circle at top, #1c1c1c, #000000);
       font-family: 'Inter', sans-serif;
-      padding: 40px;
-      background: #0f172a;
-      color: #f8fafc;
+      color: #f5f5f5;
     }
 
     h1 {
-      font-weight: 700;
-      margin-bottom: 40px;
-      font-size: 32px;
+      font-family: 'Playfair Display', serif;
+      font-size: 40px;
+      letter-spacing: 2px;
+      margin-bottom: 60px;
+      color: #d4af37;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 25px;
-      margin-bottom: 40px;
+    .hero {
+      margin-bottom: 80px;
     }
 
-    .card {
-      background: #1e293b;
-      padding: 25px;
-      border-radius: 18px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-    }
-
-    .metric {
-      font-size: 28px;
+    .big-number {
+      font-size: 60px;
       font-weight: 700;
       margin-top: 10px;
     }
 
-    .sub {
-      opacity: 0.6;
-      font-size: 14px;
+    .roi {
+      font-size: 24px;
+      margin-top: 15px;
+      letter-spacing: 1px;
     }
 
-    .green { color: #22c55e; }
-    .red { color: #ef4444; }
+    .gold {
+      color: #d4af37;
+    }
 
-    select {
-      padding: 8px 12px;
-      background: #0f172a;
-      color: white;
-      border: 1px solid #334155;
-      border-radius: 8px;
-      margin-right: 15px;
+    .green {
+      color: #4ade80;
+    }
+
+    .red {
+      color: #f87171;
+    }
+
+    .section {
+      margin-bottom: 80px;
     }
 
     canvas {
-      margin-top: 20px;
+      margin-top: 30px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 40px;
     }
 
     th, td {
-      padding: 12px;
+      padding: 16px;
       text-align: left;
-      border-bottom: 1px solid #334155;
+      border-bottom: 1px solid #333;
     }
 
     th {
-      font-weight: 600;
-      opacity: 0.7;
-      font-size: 14px;
+      color: #888;
+      font-size: 13px;
       text-transform: uppercase;
       letter-spacing: 1px;
     }
 
     tr:hover {
-      background: #1e293b;
+      background: rgba(212,175,55,0.05);
     }
 
-    .profit-cell {
+    .badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
       font-weight: 600;
+      background: #222;
+      border: 1px solid #333;
+    }
+
+    .badge.high {
+      border-color: #d4af37;
+      color: #d4af37;
+    }
+
+    .badge.medium {
+      border-color: #4ade80;
+      color: #4ade80;
+    }
+
+    .badge.low {
+      border-color: #f87171;
+      color: #f87171;
     }
   </style>
 </head>
 
 <body>
 
-<h1>📊 Pokemon Investment Portfolio</h1>
+<h1>POKEMON INVESTMENT PORTFOLIO</h1>
 
-<div class="grid">
-  <div class="card">
-    <div class="sub">Total Investment</div>
-    <div class="metric" id="totalInvestment"></div>
-  </div>
-
-  <div class="card">
-    <div class="sub">Current Value</div>
-    <div class="metric" id="currentValue"></div>
-  </div>
-
-  <div class="card">
-    <div class="sub">Total Profit</div>
-    <div class="metric" id="totalProfit"></div>
-  </div>
+<div class="hero">
+  <div>Total Portfolio Value</div>
+  <div id="portfolioValue" class="big-number gold"></div>
+  <div id="roiDisplay" class="roi"></div>
 </div>
 
-<div class="card">
-  <select id="typeFilter">
-    <option value="">All Product Types</option>
-  </select>
-
-  <canvas id="portfolioChart" height="120"></canvas>
+<div class="section">
+  <canvas id="valueChart" height="120"></canvas>
 </div>
 
-<div class="card">
+<div class="section">
+  <canvas id="breakdownChart" height="120"></canvas>
+</div>
+
+<div class="section">
   <table>
     <thead>
       <tr>
-        <th>Name</th>
+        <th>Asset</th>
         <th>Type</th>
-        <th>Set</th>
-        <th>Qty</th>
-        <th>Purchase €</th>
-        <th>Current €</th>
-        <th>Profit €</th>
+        <th>Investment</th>
+        <th>Current</th>
+        <th>Profit</th>
+        <th>Performance</th>
       </tr>
     </thead>
     <tbody id="itemsBody"></tbody>
@@ -139,95 +144,126 @@
 </div>
 
 <script>
-let chartInstance = null
-let allItems = []
+let valueChart = null
+let breakdownChart = null
 
 async function loadData() {
   const res = await fetch('/api/dashboard')
   const data = await res.json()
 
-  allItems = data.items
-  populateFilter()
-  render(allItems)
-}
-
-function populateFilter() {
-  const select = document.getElementById('typeFilter')
-  const types = [...new Set(allItems.map(i => i.product_type).filter(Boolean))]
-
-  types.forEach(t => {
-    select.innerHTML += `<option value="${t}">${t}</option>`
-  })
+  render(data.items)
 }
 
 function render(items) {
 
   const totalInvestment = items.reduce((sum,i)=>sum+i.purchase_price*i.quantity,0)
-  const currentValue = items.reduce((sum,i)=>sum+i.current_price*i.quantity,0)
-  const profit = currentValue-totalInvestment
+  const totalCurrent = items.reduce((sum,i)=>sum+i.current_price*i.quantity,0)
+  const totalProfit = totalCurrent - totalInvestment
+  const roi = ((totalProfit/totalInvestment)*100).toFixed(2)
 
-  document.getElementById('totalInvestment').innerHTML = `€ ${totalInvestment.toLocaleString()}`
-  document.getElementById('currentValue').innerHTML = `€ ${currentValue.toLocaleString()}`
-  document.getElementById('totalProfit').innerHTML =
-    `<span class="${profit>=0?'green':'red'}">€ ${profit.toLocaleString()}</span>`
+  document.getElementById('portfolioValue').innerHTML =
+    `€ ${totalCurrent.toLocaleString()}`
 
-  renderChart(totalInvestment,currentValue)
+  document.getElementById('roiDisplay').innerHTML =
+    `<span class="${roi>=0?'green':'red'}">ROI ${roi}%</span>`
+
+  renderValueChart(totalInvestment,totalCurrent)
+  renderBreakdownChart(items)
   renderTable(items)
 }
 
-function renderChart(invest,current) {
-  const ctx = document.getElementById('portfolioChart')
+function renderValueChart(invest,current){
 
-  if(chartInstance) chartInstance.destroy()
+  const ctx=document.getElementById('valueChart')
 
-  chartInstance = new Chart(ctx,{
+  if(valueChart) valueChart.destroy()
+
+  valueChart=new Chart(ctx,{
     type:'bar',
     data:{
       labels:['Investment','Current Value'],
       datasets:[{
         data:[invest,current],
-        backgroundColor:['#3b82f6','#22c55e'],
+        backgroundColor:['#444','#d4af37'],
         borderRadius:12
       }]
     },
     options:{
       plugins:{legend:{display:false}},
       scales:{
-        y:{ticks:{color:'#94a3b8'}},
-        x:{ticks:{color:'#94a3b8'}}
+        y:{ticks:{color:'#aaa'}},
+        x:{ticks:{color:'#aaa'}}
+      }
+    }
+  })
+}
+
+function renderBreakdownChart(items){
+
+  const totals={}
+  items.forEach(i=>{
+    if(!i.product_type)return
+    totals[i.product_type]=(totals[i.product_type]||0)+(i.current_price*i.quantity)
+  })
+
+  const ctx=document.getElementById('breakdownChart')
+
+  if(breakdownChart) breakdownChart.destroy()
+
+  breakdownChart=new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:Object.keys(totals),
+      datasets:[{
+        data:Object.values(totals),
+        backgroundColor:[
+          '#d4af37',
+          '#555',
+          '#888',
+          '#333'
+        ]
+      }]
+    },
+    options:{
+      plugins:{
+        legend:{position:'bottom',labels:{color:'#aaa'}}
       }
     }
   })
 }
 
 function renderTable(items){
+
   const tbody=document.getElementById('itemsBody')
   tbody.innerHTML=''
 
   items.forEach(i=>{
+
     const profit=(i.current_price-i.purchase_price)*i.quantity
+    const roi=((profit/(i.purchase_price*i.quantity))*100).toFixed(1)
+
+    let performance='medium'
+    if(roi>150)performance='high'
+    if(roi<0)performance='low'
 
     tbody.innerHTML+=`
       <tr>
         <td>${i.name}</td>
         <td>${i.product_type||''}</td>
-        <td>${i.set_name||''}</td>
-        <td>${i.quantity}</td>
         <td>€ ${i.purchase_price}</td>
         <td>€ ${i.current_price}</td>
-        <td class="profit-cell ${profit>=0?'green':'red'}">
+        <td class="${profit>=0?'green':'red'}">
           € ${profit.toLocaleString()}
+        </td>
+        <td>
+          <span class="badge ${performance}">
+            ${performance.toUpperCase()}
+          </span>
         </td>
       </tr>
     `
   })
 }
-
-document.getElementById('typeFilter').addEventListener('change',function(){
-  const type=this.value
-  if(!type){render(allItems);return}
-  render(allItems.filter(i=>i.product_type===type))
-})
 
 loadData()
 </script>
