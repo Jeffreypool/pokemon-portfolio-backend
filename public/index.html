@@ -4,6 +4,7 @@
   <title>Pokemon Portfolio</title>
   <meta charset="UTF-8" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
       font-family: Arial;
@@ -58,6 +59,7 @@
     }
   </style>
 </head>
+
 <body>
 
 <h1>📈 Pokemon Portfolio</h1>
@@ -68,10 +70,11 @@
 </div>
 
 <div class="card">
-  <div class="card">
   <h2>Portfolio Overview</h2>
   <canvas id="portfolioChart" height="100"></canvas>
 </div>
+
+<div class="card">
   <h2>Add Item</h2>
 
   <form id="itemForm">
@@ -83,12 +86,10 @@
     <input id="current_price" type="number" placeholder="Current €" required />
     <button type="submit">Add</button>
   </form>
-
 </div>
 
 <div class="card">
   <h2>Items</h2>
-
   <table id="itemsTable">
     <thead>
       <tr>
@@ -106,14 +107,13 @@
 </div>
 
 <script>
-<script>
 let chartInstance = null
 
 async function loadData() {
   const res = await fetch('/api/dashboard')
   const data = await res.json()
 
-  // -------- SUMMARY --------
+  // SUMMARY
   const summaryDiv = document.getElementById('summary')
   const profitClass = data.summary.profit >= 0 ? 'green' : 'red'
 
@@ -126,7 +126,7 @@ async function loadData() {
     </p>
   `
 
-  // -------- TABLE --------
+  // TABLE
   const tbody = document.querySelector('#itemsTable tbody')
   tbody.innerHTML = ''
 
@@ -146,7 +146,7 @@ async function loadData() {
     tbody.innerHTML += row
   })
 
-  // -------- CHART --------
+  // CHART
   const ctx = document.getElementById('portfolioChart')
 
   if (chartInstance) {
@@ -178,8 +178,31 @@ async function loadData() {
   })
 }
 
+// FORM SUBMIT
+document.getElementById('itemForm').addEventListener('submit', async function(e) {
+  e.preventDefault()
+
+  const item = {
+    name: document.getElementById('name').value,
+    set_name: document.getElementById('set').value,
+    condition: document.getElementById('condition').value,
+    quantity: parseInt(document.getElementById('quantity').value),
+    purchase_price: parseFloat(document.getElementById('purchase_price').value),
+    current_price: parseFloat(document.getElementById('current_price').value)
+  }
+
+  await fetch('/api/add-item', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(item)
+  })
+
+  this.reset()
+  loadData()
+})
+
 loadData()
 </script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </body>
 </html>
