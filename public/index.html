@@ -1,45 +1,260 @@
-import { createClient } from '@supabase/supabase-js'
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pokemon Portfolio</title>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
-
-export default async function handler(req, res) {
-  try {
-    const { data: items, error } = await supabase
-      .from('portfolio_items')
-      .select('*')
-
-    if (error) {
-      return res.status(500).json({ error: error.message })
+  <style>
+    body {
+      font-family: Arial;
+      padding: 40px;
+      background: #f5f5f5;
     }
 
-    const total_items = items.length
+    h1 { margin-bottom: 30px; }
 
-    const total_purchase_value = items.reduce(
-      (sum, item) => sum + (item.purchase_price || 0) * (item.quantity || 1),
-      0
-    )
+    .card {
+      background: white;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
 
-    const total_current_value = items.reduce(
-      (sum, item) => sum + (item.current_price || 0) * (item.quantity || 1),
-      0
-    )
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
 
-    const profit = total_current_value - total_purchase_value
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
 
-    return res.status(200).json({
-      items,
-      summary: {
-        total_items,
-        total_purchase_value,
-        total_current_value,
-        profit
-      }
-    })
+    th { background: #fafafa; }
 
-  } catch (err) {
-    return res.status(500).json({ error: err.message })
-  }
+    .profit {
+      font-weight: bold;
+      font-size: 18px;
+    }
+
+    .green { color: green; }
+    .red { color: red; }
+
+    input, select {
+      padding: 8px;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      padding: 8px 15px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h1>📈 Pokemon Portfolio</h1>
+
+<div class="card">
+  <h2>Summary</h2>
+  <div id="summary"></div>
+</div>
+
+<div class="card">
+  <h2>Portfolio Overview</h2>
+  <canvas id="portfolioChart" height="100"></canvas>
+</div>
+
+<div class="card">
+  <h2>Filters</h2>
+
+  <select id="productFilter">
+    <option value="">All Product Types</option>
+    <option value="Booster Box">Booster Box</option>
+    <option value="ETB">ETB</option>
+    <option value="Loose Pack">Loose Pack</option>
+    <option value="Single Card">Single Card</option>
+  </select>
+
+  <button onclick="applyFilters()">Apply Filter</button>
+</div>
+
+<div class="card">
+  <h2>Add Item</h2>
+
+  <form id="itemForm">
+    <input id="name" placeholder="Name" required />
+    <input id="set" placeholder="Set Name" />
+    <input id="condition" placeholder="Condition" />
+    <input id="quantity" type="number" value="1" required />
+    <input id="purchase_price" type="number" placeholder="Purchase €" required />
+    <input id="current_price" type="number" placeholder="Current €" required />
+
+    <select id="product_type">
+      <option value="Booster Box">Booster Box</option>
+      <option value="ETB">ETB</option>
+      <option value="Loose Pack">Loose Pack</option>
+      <option value="Single Card">Single Card</option>
+    </select>
+
+    <button type="submit">Add</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Items</h2>
+
+  <table id="itemsTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Product</th>
+        <th>Set</th>
+        <th>Condition</th>
+        <th>Qty</th>
+        <th>Purchase €</th>
+        <th>Current €</th>
+        <th>Profit €</th>
+        <th>Delete</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+let chartInstance = null
+let allItems = []
+
+async function loadData() {
+  const res = await fetch('/api/dashboard')
+  const data = await res.json()
+
+  allItems = data.items
+  render(allItems)
 }
+
+function render(items) {
+
+  const total_purchase_value = items.reduce(
+    (sum, item) => sum + item.purchase_price * item.quantity, 0
+  )
+
+  const total_current_value = items.reduce(
+    (sum, item) => sum + item.current_price * item.quantity, 0
+  )
+
+  const profit = total_current_value - total_purchase_value
+
+  const summaryDiv = document.getElementById('summary')
+  const profitClass = profit >= 0 ? 'green' : 'red'
+
+  summaryDiv.innerHTML = `
+    <p>Total Items: ${items.length}</p>
+    <p>Total Purchase Value: € ${total_purchase_value}</p>
+    <p>Total Current Value: € ${total_current_value}</p>
+    <p class="profit ${profitClass}">
+      Total Profit: € ${profit}
+    </p>
+  `
+
+  const tbody = document.querySelector('#itemsTable tbody')
+  tbody.innerHTML = ''
+
+  items.forEach(item => {
+    const profit = (item.current_price - item.purchase_price) * item.quantity
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${item.name}</td>
+        <td>${item.product_type || ''}</td>
+        <td>${item.set_name || ''}</td>
+        <td>${item.condition || ''}</td>
+        <td>${item.quantity}</td>
+        <td>€ ${item.purchase_price}</td>
+        <td>€ ${item.current_price}</td>
+        <td>€ ${profit}</td>
+        <td>
+          <button onclick="deleteItem('${item.id}')">❌</button>
+        </td>
+      </tr>
+    `
+  })
+
+  const ctx = document.getElementById('portfolioChart')
+
+  if (chartInstance) chartInstance.destroy()
+
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Purchase Value', 'Current Value'],
+      datasets: [{
+        data: [total_purchase_value, total_current_value],
+        backgroundColor: ['#3498db', '#2ecc71']
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } }
+    }
+  })
+}
+
+function applyFilters() {
+  const type = document.getElementById('productFilter').value
+
+  if (!type) {
+    render(allItems)
+    return
+  }
+
+  const filtered = allItems.filter(item =>
+    item.product_type === type
+  )
+
+  render(filtered)
+}
+
+document.getElementById('itemForm').addEventListener('submit', async (e) => {
+  e.preventDefault()
+
+  const body = {
+    name: document.getElementById('name').value,
+    set_name: document.getElementById('set').value,
+    condition: document.getElementById('condition').value,
+    quantity: parseInt(document.getElementById('quantity').value),
+    purchase_price: parseFloat(document.getElementById('purchase_price').value),
+    current_price: parseFloat(document.getElementById('current_price').value),
+    product_type: document.getElementById('product_type').value
+  }
+
+  await fetch('/api/add-item', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+
+  document.getElementById('itemForm').reset()
+  loadData()
+})
+
+async function deleteItem(id) {
+  await fetch('/api/delete-item', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id })
+  })
+
+  loadData()
+}
+
+loadData()
+</script>
+
+</body>
+</html>
