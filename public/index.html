@@ -18,57 +18,45 @@
 
     h1 {
       font-family: 'Playfair Display', serif;
-      font-size: 36px;
+      font-size: 34px;
       letter-spacing: 2px;
       margin-bottom: 60px;
       color: #d4af37;
     }
 
     .hero-number {
-      font-size: 60px;
+      font-size: 56px;
       font-weight: 700;
       margin-top: 10px;
+      transition: all 0.3s ease;
+    }
+
+    .gold-glow {
+      text-shadow: 0 0 15px rgba(212,175,55,0.6);
     }
 
     .roi {
-      font-size: 22px;
-      margin-top: 10px;
+      font-size: 20px;
+      margin-top: 8px;
     }
 
     .green { color: #4ade80; }
     .red { color: #f87171; }
 
     .section {
-      margin-bottom: 80px;
+      margin-bottom: 60px;
     }
 
     .card {
       background: rgba(255,255,255,0.05);
       backdrop-filter: blur(10px);
-      padding: 25px;
-      border-radius: 18px;
-      margin-bottom: 30px;
+      padding: 20px;
+      border-radius: 16px;
+      margin-bottom: 25px;
     }
 
-    .collapse-btn {
-      background: #d4af37;
-      color: black;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    .manage {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.5s ease;
-    }
-
-    .manage.open {
-      max-height: 2000px;
-      margin-top: 30px;
+    canvas {
+      max-height: 220px !important;
     }
 
     table {
@@ -95,20 +83,27 @@
       background: rgba(212,175,55,0.05);
     }
 
-    input, select {
-      padding: 6px 10px;
-      background: #111;
-      color: white;
+    .badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
       border: 1px solid #333;
-      border-radius: 6px;
-      margin-right: 10px;
-      margin-bottom: 10px;
     }
 
-    button.small {
-      padding: 5px 10px;
-      font-size: 12px;
-      border-radius: 6px;
+    .badge.gold {
+      border-color: #d4af37;
+      color: #d4af37;
+    }
+
+    .badge.green {
+      border-color: #4ade80;
+      color: #4ade80;
+    }
+
+    .badge.red {
+      border-color: #f87171;
+      color: #f87171;
     }
 
   </style>
@@ -125,69 +120,58 @@
 </div>
 
 <div class="section card">
-  <canvas id="valueChart" height="120"></canvas>
+  <canvas id="valueChart"></canvas>
 </div>
 
 <div class="section card">
-  <canvas id="breakdownChart" height="120"></canvas>
+  <canvas id="growthChart"></canvas>
 </div>
 
-<button class="collapse-btn" onclick="toggleManage()">⚙ Manage Portfolio</button>
+<div class="section card">
+  <h3>Top Performing Asset</h3>
+  <div id="topAsset"></div>
+</div>
 
-<div id="manageSection" class="manage">
-
-  <div class="card">
-    <h3>Add Item</h3>
-    <form id="itemForm">
-      <input id="name" placeholder="Name" required />
-      <input id="set" placeholder="Set" />
-      <input id="condition" placeholder="Condition" />
-      <input id="quantity" type="number" value="1" required />
-      <input id="purchase_price" type="number" placeholder="Purchase €" required />
-      <input id="current_price" type="number" placeholder="Current €" required />
-      <select id="product_type">
-        <option>Booster Box</option>
-        <option>ETB</option>
-        <option>Loose Pack</option>
-        <option>Single Card</option>
-      </select>
-      <button>Add</button>
-    </form>
-  </div>
-
-  <div class="card">
-    <h3>Portfolio Table</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Investment</th>
-          <th>Current</th>
-          <th>Profit</th>
-          <th>Delete</th>
-        </tr>
-      </thead>
-      <tbody id="itemsBody"></tbody>
-    </table>
-  </div>
-
+<div class="section card">
+  <table>
+    <thead>
+      <tr>
+        <th>Asset</th>
+        <th>Type</th>
+        <th>Investment</th>
+        <th>Current</th>
+        <th>Profit</th>
+        <th>Performance</th>
+      </tr>
+    </thead>
+    <tbody id="itemsBody"></tbody>
+  </table>
 </div>
 
 <script>
-let allItems = []
-let valueChart = null
-let breakdownChart = null
-
-function toggleManage(){
-  document.getElementById("manageSection").classList.toggle("open")
-}
+let valueChart, growthChart
 
 async function loadData(){
   const res = await fetch('/api/dashboard')
   const data = await res.json()
-  allItems = data.items
-  render(allItems)
+  render(data.items)
+}
+
+function animateNumber(element, target){
+  let start = 0
+  const duration = 1200
+  const step = target / (duration / 16)
+
+  function update(){
+    start += step
+    if(start >= target){
+      element.innerHTML = "€ " + target.toLocaleString()
+      return
+    }
+    element.innerHTML = "€ " + Math.floor(start).toLocaleString()
+    requestAnimationFrame(update)
+  }
+  update()
 }
 
 function render(items){
@@ -197,49 +181,86 @@ function render(items){
   const profit = totalCurrent-totalInvestment
   const roi = ((profit/totalInvestment)*100).toFixed(2)
 
-  document.getElementById("portfolioValue").innerHTML =
-    `€ ${totalCurrent.toLocaleString()}`
+  const portfolioEl = document.getElementById("portfolioValue")
+  animateNumber(portfolioEl,totalCurrent)
+
+  if(roi>100) portfolioEl.classList.add("gold-glow")
 
   document.getElementById("roiDisplay").innerHTML =
     `<span class="${profit>=0?'green':'red'}">ROI ${roi}%</span>`
 
-  renderCharts(items,totalInvestment,totalCurrent)
+  renderValueChart(totalInvestment,totalCurrent)
+  renderGrowthChart(totalInvestment,totalCurrent)
   renderTable(items)
+  renderTopAsset(items)
 }
 
-function renderCharts(items,invest,current){
-
+function renderValueChart(invest,current){
   if(valueChart) valueChart.destroy()
+
   valueChart = new Chart(document.getElementById("valueChart"),{
     type:"bar",
     data:{
-      labels:["Investment","Current Value"],
+      labels:["Investment","Current"],
       datasets:[{
         data:[invest,current],
         backgroundColor:["#444","#d4af37"],
-        borderRadius:10
+        borderRadius:8
       }]
     },
-    options:{plugins:{legend:{display:false}}}
-  })
-
-  const typeTotals={}
-  items.forEach(i=>{
-    if(!i.product_type)return
-    typeTotals[i.product_type]=(typeTotals[i.product_type]||0)+(i.current_price*i.quantity)
-  })
-
-  if(breakdownChart) breakdownChart.destroy()
-  breakdownChart = new Chart(document.getElementById("breakdownChart"),{
-    type:"doughnut",
-    data:{
-      labels:Object.keys(typeTotals),
-      datasets:[{
-        data:Object.values(typeTotals),
-        backgroundColor:["#d4af37","#555","#888","#333"]
-      }]
+    options:{
+      plugins:{legend:{display:false}},
+      scales:{y:{ticks:{color:"#888"}},x:{ticks:{color:"#888"}}}
     }
   })
+}
+
+function renderGrowthChart(invest,current){
+  if(growthChart) growthChart.destroy()
+
+  const fakeMonths = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+  const growthData = fakeMonths.map((m,i)=> invest + ((current-invest)/12)*i)
+
+  growthChart = new Chart(document.getElementById("growthChart"),{
+    type:"line",
+    data:{
+      labels:fakeMonths,
+      datasets:[{
+        data:growthData,
+        borderColor:"#d4af37",
+        tension:0.3
+      }]
+    },
+    options:{
+      plugins:{legend:{display:false}},
+      scales:{y:{ticks:{color:"#888"}},x:{ticks:{color:"#888"}}}
+    }
+  })
+}
+
+function renderTopAsset(items){
+  let best = null
+  let bestROI = -999
+
+  items.forEach(i=>{
+    const profit=(i.current_price-i.purchase_price)*i.quantity
+    const roi=(profit/(i.purchase_price*i.quantity))*100
+    if(roi>bestROI){
+      bestROI=roi
+      best=i
+    }
+  })
+
+  if(!best) return
+
+  document.getElementById("topAsset").innerHTML = `
+    <div style="font-size:18px;">
+      ${best.name}
+      <span class="badge gold">
+        ${bestROI.toFixed(1)}% ROI
+      </span>
+    </div>
+  `
 }
 
 function renderTable(items){
@@ -248,6 +269,11 @@ function renderTable(items){
 
   items.forEach(i=>{
     const profit=(i.current_price-i.purchase_price)*i.quantity
+    const roi=((profit/(i.purchase_price*i.quantity))*100).toFixed(1)
+
+    let badgeClass="green"
+    if(roi>150) badgeClass="gold"
+    if(roi<0) badgeClass="red"
 
     tbody.innerHTML+=`
       <tr>
@@ -255,42 +281,18 @@ function renderTable(items){
         <td>${i.product_type||""}</td>
         <td>€ ${i.purchase_price}</td>
         <td>€ ${i.current_price}</td>
-        <td class="${profit>=0?'green':'red'}">€ ${profit.toLocaleString()}</td>
-        <td><button class="small" onclick="deleteItem('${i.id}')">❌</button></td>
+        <td class="${profit>=0?'green':'red'}">
+          € ${profit.toLocaleString()}
+        </td>
+        <td>
+          <span class="badge ${badgeClass}">
+            ${roi}% ROI
+          </span>
+        </td>
       </tr>
     `
   })
 }
-
-async function deleteItem(id){
-  await fetch('/api/delete-item',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({id})
-  })
-  loadData()
-}
-
-document.getElementById("itemForm").addEventListener("submit",async e=>{
-  e.preventDefault()
-
-  await fetch('/api/add-item',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      name:name.value,
-      set_name:set.value,
-      condition:condition.value,
-      quantity:Number(quantity.value),
-      purchase_price:Number(purchase_price.value),
-      current_price:Number(current_price.value),
-      product_type:product_type.value
-    })
-  })
-
-  e.target.reset()
-  loadData()
-})
 
 loadData()
 </script>
