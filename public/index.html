@@ -9,6 +9,7 @@
       padding: 40px;
       background: #f5f5f5;
     }
+
     .card {
       background: white;
       padding: 20px;
@@ -16,39 +17,39 @@
       border-radius: 10px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
+
     h1 {
       margin-bottom: 30px;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
     }
+
     th, td {
       padding: 10px;
       border-bottom: 1px solid #ddd;
       text-align: left;
     }
+
     th {
       background: #fafafa;
     }
+
     .profit {
       font-weight: bold;
       font-size: 18px;
     }
+
     .green { color: green; }
     .red { color: red; }
   </style>
 </head>
+
 <body>
 
 <h1>📈 Pokemon Portfolio</h1>
-
-<div class="card">
-  <h2>📊 Samenvatting</h2>
-  <p><strong>Totaal aankoop:</strong> € <span id="totalPurchase">0</span></p>
-  <p><strong>Huidige waarde:</strong> € <span id="totalCurrent">0</span></p>
-  <p><strong>Winst / Verlies:</strong> € <span id="totalProfit">0</span></p>
-</div>
 
 <div class="card">
   <h2>Summary</h2>
@@ -75,64 +76,55 @@
 
 <script>
 async function loadData() {
-  const res = await fetch('/api/dashboard')
-  const data = await res.json()
+  try {
+    const res = await fetch('/api/dashboard')
+    const data = await res.json()
 
-  const summaryDiv = document.getElementById('summary')
-  const profitClass = data.summary.profit >= 0 ? 'green' : 'red'
+    if (!data.summary) {
+      console.error("No summary returned", data)
+      return
+    }
 
-  summaryDiv.innerHTML = `
-    <p>Total Items: ${data.summary.total_items}</p>
-    <p>Total Purchase Value: € ${data.summary.total_purchase_value}</p>
-    <p>Total Current Value: € ${data.summary.total_current_value}</p>
-    <p class="profit ${profitClass}">
-      Total Profit: € ${data.summary.profit}
-    </p>
-  `
+    const summaryDiv = document.getElementById('summary')
+    const profitClass = data.summary.profit >= 0 ? 'green' : 'red'
 
-  const tbody = document.querySelector('#itemsTable tbody')
-  tbody.innerHTML = ''
-
-  data.items.forEach(item => {
-    const profit = (item.current_price - item.purchase_price) * item.quantity
-    const row = `
-      <tr>
-        <td>${item.name}</td>
-        <td>${item.set_name || ''}</td>
-        <td>${item.condition || ''}</td>
-        <td>${item.quantity}</td>
-        <td>€ ${item.purchase_price}</td>
-        <td>€ ${item.current_price}</td>
-        <td>€ ${profit}</td>
-      </tr>
+    summaryDiv.innerHTML = `
+      <p>Total Items: ${data.summary.total_items}</p>
+      <p>Total Purchase Value: € ${data.summary.total_purchase_value}</p>
+      <p>Total Current Value: € ${data.summary.total_current_value}</p>
+      <p class="profit ${profitClass}">
+        Total Profit: € ${data.summary.profit}
+      </p>
     `
-    tbody.innerHTML += row
-  })
+
+    const tbody = document.querySelector('#itemsTable tbody')
+    tbody.innerHTML = ''
+
+    data.items.forEach(item => {
+      const profit = (item.current_price - item.purchase_price) * item.quantity
+
+      const row = `
+        <tr>
+          <td>${item.name}</td>
+          <td>${item.set_name || ''}</td>
+          <td>${item.condition || ''}</td>
+          <td>${item.quantity}</td>
+          <td>€ ${item.purchase_price}</td>
+          <td>€ ${item.current_price}</td>
+          <td>€ ${profit}</td>
+        </tr>
+      `
+
+      tbody.innerHTML += row
+    })
+
+  } catch (error) {
+    console.error("Error loading dashboard:", error)
+  }
 }
 
 loadData()
 </script>
-<script>
-async function loadSummary() {
-  try {
-    const response = await fetch("/api/portfolio-summary")
-    const data = await response.json()
 
-    document.getElementById("totalPurchase").textContent =
-      data.summary.total_purchase_value.toLocaleString()
-
-    document.getElementById("totalCurrent").textContent =
-      data.summary.total_current_value.toLocaleString()
-
-    document.getElementById("totalProfit").textContent =
-      data.summary.profit.toLocaleString()
-
-  } catch (err) {
-    console.error("Error loading summary:", err)
-  }
-}
-
-loadSummary()
-</script>
 </body>
 </html>
