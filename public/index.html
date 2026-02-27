@@ -106,10 +106,14 @@
 </div>
 
 <script>
+<script>
+let chartInstance = null
+
 async function loadData() {
   const res = await fetch('/api/dashboard')
   const data = await res.json()
 
+  // -------- SUMMARY --------
   const summaryDiv = document.getElementById('summary')
   const profitClass = data.summary.profit >= 0 ? 'green' : 'red'
 
@@ -122,12 +126,12 @@ async function loadData() {
     </p>
   `
 
+  // -------- TABLE --------
   const tbody = document.querySelector('#itemsTable tbody')
   tbody.innerHTML = ''
 
   data.items.forEach(item => {
     const profit = (item.current_price - item.purchase_price) * item.quantity
-
     const row = `
       <tr>
         <td>${item.name}</td>
@@ -139,40 +143,40 @@ async function loadData() {
         <td>€ ${profit}</td>
       </tr>
     `
-
     tbody.innerHTML += row
   })
-}
 
-async function addItem(event) {
-  event.preventDefault()
+  // -------- CHART --------
+  const ctx = document.getElementById('portfolioChart')
 
-  const name = document.getElementById('name').value
-  const set_name = document.getElementById('set').value
-  const condition = document.getElementById('condition').value
-  const quantity = parseInt(document.getElementById('quantity').value)
-  const purchase_price = parseFloat(document.getElementById('purchase_price').value)
-  const current_price = parseFloat(document.getElementById('current_price').value)
+  if (chartInstance) {
+    chartInstance.destroy()
+  }
 
-  await fetch('/api/add-item', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name,
-      set_name,
-      condition,
-      quantity,
-      purchase_price,
-      current_price
-    })
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Purchase Value', 'Current Value'],
+      datasets: [{
+        label: 'Portfolio €',
+        data: [
+          data.summary.total_purchase_value,
+          data.summary.total_current_value
+        ],
+        backgroundColor: [
+          '#3498db',
+          '#2ecc71'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      }
+    }
   })
-
-  document.getElementById('itemForm').reset()
-  loadData()
 }
-
-document.getElementById('itemForm')
-  .addEventListener('submit', addItem)
 
 loadData()
 </script>
