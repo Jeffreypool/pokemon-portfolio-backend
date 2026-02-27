@@ -162,6 +162,10 @@ function renderSummary() {
     sum + (i.current_price * i.quantity), 0)
 
   const profit = totalCurrent - totalPurchase
+  const profitPercent = totalPurchase > 0
+    ? ((profit / totalPurchase) * 100).toFixed(2)
+    : 0
+
   const profitClass = profit >= 0 ? 'green' : 'red'
 
   document.getElementById('summary').innerHTML = `
@@ -169,7 +173,7 @@ function renderSummary() {
     <p>Total Purchase Value: € ${totalPurchase}</p>
     <p>Total Current Value: € ${totalCurrent}</p>
     <p class="profit ${profitClass}">
-      Total Profit: € ${profit}
+      Total Profit: € ${profit} (${profitPercent}%)
     </p>
   `
 }
@@ -180,6 +184,11 @@ function renderTable() {
 
   filteredItems.forEach(item => {
     const profit = (item.current_price - item.purchase_price) * item.quantity
+    const profitPercent = item.purchase_price > 0
+      ? ((profit / (item.purchase_price * item.quantity)) * 100).toFixed(2)
+      : 0
+
+    const profitClass = profit >= 0 ? 'green' : 'red'
 
     tbody.innerHTML += `
       <tr>
@@ -189,7 +198,9 @@ function renderTable() {
         <td>${item.quantity}</td>
         <td>€ ${item.purchase_price}</td>
         <td>€ ${item.current_price}</td>
-        <td>€ ${profit}</td>
+        <td class="${profitClass}">
+          € ${profit} (${profitPercent}%)
+        </td>
         <td>
           <button class="action-btn" onclick="editItem('${item.id}')">Edit</button>
           <button onclick="deleteItem('${item.id}')">Delete</button>
