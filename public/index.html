@@ -73,7 +73,13 @@
   <h2>Portfolio Overview</h2>
   <canvas id="portfolioChart" height="100"></canvas>
 </div>
+<div class="card">
+  <h2>Filters</h2>
 
+  <input id="filterSet" placeholder="Filter by Set" />
+  <input id="filterProfit" type="number" placeholder="Min Profit €" />
+  <button onclick="loadData()">Apply Filters</button>
+</div>
 <div class="card">
   <h2>Add Item</h2>
 
@@ -127,11 +133,24 @@ async function loadData() {
   `
 
   // TABLE
-  const tbody = document.querySelector('#itemsTable tbody')
-  tbody.innerHTML = ''
+ const filterSet = document.getElementById('filterSet').value.toLowerCase()
+const minProfit = parseFloat(document.getElementById('filterProfit').value) || 0
 
-  data.items.forEach(item => {
+data.items
+  .filter(item => {
     const profit = (item.current_price - item.purchase_price) * item.quantity
+
+    const matchesSet =
+      !filterSet ||
+      (item.set_name && item.set_name.toLowerCase().includes(filterSet))
+
+    const matchesProfit = profit >= minProfit
+
+    return matchesSet && matchesProfit
+  })
+  .forEach(item => {
+    const profit = (item.current_price - item.purchase_price) * item.quantity
+
     const row = `
       <tr>
         <td>${item.name}</td>
