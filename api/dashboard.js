@@ -7,7 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    const { data, error } = await supabase
+    const { data: items, error } = await supabase
       .from('portfolio_items')
       .select('*')
 
@@ -15,33 +15,27 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: error.message })
     }
 
-    let totalPurchase = 0
-    let totalCurrent = 0
+    const totalPurchase = items.reduce((sum, item) => {
+      return sum + (item.purchase_price * item.quantity)
+    }, 0)
 
-    for (const item of data) {
-      const purchase = Number(item.purchase_price || 0)
-      const current = Number(item.current_price || 0)
-      const qty = Number(item.quantity || 1)
-
-      totalPurchase += purchase * qty
-      totalCurrent += current * qty
-    }
+    const totalCurrent = items.reduce((sum, item) => {
+      return sum + (item.current_price * item.quantity)
+    }, 0)
 
     const profit = totalCurrent - totalPurchase
 
     return res.status(200).json({
-      items: data,
+      items,
       summary: {
-        total_items: data.length,
+        total_items: items.length,
         total_purchase_value: totalPurchase,
         total_current_value: totalCurrent,
-        profit: profit
+        profit
       }
     })
 
   } catch (err) {
-    return res.status(500).json({
-      error: err.message
-    })
+    return res.status(500).json({ error: err.message })
   }
 }
