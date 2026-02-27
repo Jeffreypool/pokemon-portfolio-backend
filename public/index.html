@@ -44,6 +44,13 @@
 <h1>📈 Pokemon Portfolio</h1>
 
 <div class="card">
+  <h2>📊 Samenvatting</h2>
+  <p><strong>Totaal aankoop:</strong> € <span id="totalPurchase">0</span></p>
+  <p><strong>Huidige waarde:</strong> € <span id="totalCurrent">0</span></p>
+  <p><strong>Winst / Verlies:</strong> € <span id="totalProfit">0</span></p>
+</div>
+
+<div class="card">
   <h2>Summary</h2>
   <div id="summary"></div>
 </div>
@@ -105,6 +112,27 @@ async function loadData() {
 
 loadData()
 </script>
+<script>
+async function loadSummary() {
+  try {
+    const response = await fetch("/api/portfolio-summary")
+    const data = await response.json()
 
+    document.getElementById("totalPurchase").textContent =
+      data.summary.total_purchase_value.toLocaleString()
+
+    document.getElementById("totalCurrent").textContent =
+      data.summary.total_current_value.toLocaleString()
+
+    document.getElementById("totalProfit").textContent =
+      data.summary.profit.toLocaleString()
+
+  } catch (err) {
+    console.error("Error loading summary:", err)
+  }
+}
+
+loadSummary()
+</script>
 </body>
 </html>
