@@ -59,7 +59,6 @@
     }
   </style>
 </head>
-
 <body>
 
 <h1>📈 Pokemon Portfolio</h1>
@@ -73,13 +72,14 @@
   <h2>Portfolio Overview</h2>
   <canvas id="portfolioChart" height="100"></canvas>
 </div>
+
 <div class="card">
   <h2>Filters</h2>
-
   <input id="filterSet" placeholder="Filter by Set" />
-  <input id="filterProfit" type="number" placeholder="Min Profit €" />
-  <button onclick="loadData()">Apply Filters</button>
+  <input id="filterProfit" type="number" placeholder="Min Profit €" value="0" />
+  <button id="applyFilters">Apply Filters</button>
 </div>
+
 <div class="card">
   <h2>Add Item</h2>
 
@@ -132,45 +132,44 @@ async function loadData() {
     </p>
   `
 
+  // FILTER VALUES
+  const filterSet = document.getElementById('filterSet').value.toLowerCase()
+  const minProfit = parseFloat(document.getElementById('filterProfit').value) || 0
+
   // TABLE
- const filterSet = document.getElementById('filterSet').value.toLowerCase()
-const minProfit = parseFloat(document.getElementById('filterProfit').value) || 0
+  const tbody = document.querySelector('#itemsTable tbody')
+  tbody.innerHTML = ''
 
-data.items
-  .filter(item => {
-    const profit = (item.current_price - item.purchase_price) * item.quantity
+  data.items
+    .filter(item => {
+      const profit = (item.current_price - item.purchase_price) * item.quantity
+      const matchesSet =
+        !filterSet ||
+        (item.set_name && item.set_name.toLowerCase().includes(filterSet))
+      const matchesProfit = profit >= minProfit
+      return matchesSet && matchesProfit
+    })
+    .forEach(item => {
+      const profit = (item.current_price - item.purchase_price) * item.quantity
 
-    const matchesSet =
-      !filterSet ||
-      (item.set_name && item.set_name.toLowerCase().includes(filterSet))
-
-    const matchesProfit = profit >= minProfit
-
-    return matchesSet && matchesProfit
-  })
-  .forEach(item => {
-    const profit = (item.current_price - item.purchase_price) * item.quantity
-
-    const row = `
-      <tr>
-        <td>${item.name}</td>
-        <td>${item.set_name || ''}</td>
-        <td>${item.condition || ''}</td>
-        <td>${item.quantity}</td>
-        <td>€ ${item.purchase_price}</td>
-        <td>€ ${item.current_price}</td>
-        <td>€ ${profit}</td>
-      </tr>
-    `
-    tbody.innerHTML += row
-  })
+      const row = `
+        <tr>
+          <td>${item.name}</td>
+          <td>${item.set_name || ''}</td>
+          <td>${item.condition || ''}</td>
+          <td>${item.quantity}</td>
+          <td>€ ${item.purchase_price}</td>
+          <td>€ ${item.current_price}</td>
+          <td>€ ${profit}</td>
+        </tr>
+      `
+      tbody.innerHTML += row
+    })
 
   // CHART
   const ctx = document.getElementById('portfolioChart')
 
-  if (chartInstance) {
-    chartInstance.destroy()
-  }
+  if (chartInstance) chartInstance.destroy()
 
   chartInstance = new Chart(ctx, {
     type: 'bar',
@@ -182,44 +181,43 @@ data.items
           data.summary.total_purchase_value,
           data.summary.total_current_value
         ],
-        backgroundColor: [
-          '#3498db',
-          '#2ecc71'
-        ]
+        backgroundColor: ['#3498db', '#2ecc71']
       }]
     },
     options: {
       responsive: true,
-      plugins: {
-        legend: { display: false }
-      }
+      plugins: { legend: { display: false } }
     }
   })
 }
 
-// FORM SUBMIT
-document.getElementById('itemForm').addEventListener('submit', async function(e) {
-  e.preventDefault()
+// FILTER BUTTON
+document.getElementById('applyFilters')
+  .addEventListener('click', loadData)
 
-  const item = {
-    name: document.getElementById('name').value,
-    set_name: document.getElementById('set').value,
-    condition: document.getElementById('condition').value,
-    quantity: parseInt(document.getElementById('quantity').value),
-    purchase_price: parseFloat(document.getElementById('purchase_price').value),
-    current_price: parseFloat(document.getElementById('current_price').value)
-  }
+// ADD ITEM FORM
+document.getElementById('itemForm')
+  .addEventListener('submit', async (e) => {
+    e.preventDefault()
 
-  await fetch('/api/add-item', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(item)
+    await fetch('/api/add-item', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: document.getElementById('name').value,
+        set_name: document.getElementById('set').value,
+        condition: document.getElementById('condition').value,
+        quantity: document.getElementById('quantity').value,
+        purchase_price: document.getElementById('purchase_price').value,
+        current_price: document.getElementById('current_price').value
+      })
+    })
+
+    document.getElementById('itemForm').reset()
+    loadData()
   })
 
-  this.reset()
-  loadData()
-})
-
+// INITIAL LOAD
 loadData()
 </script>
 
