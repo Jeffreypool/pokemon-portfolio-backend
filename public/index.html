@@ -12,9 +12,7 @@
       background: #f5f5f5;
     }
 
-    h1 {
-      margin-bottom: 30px;
-    }
+    h1 { margin-bottom: 30px; }
 
     .card {
       background: white;
@@ -35,21 +33,7 @@
       text-align: left;
     }
 
-    th {
-      background: #fafafa;
-      cursor: pointer;
-    }
-
-    input, select {
-      padding: 6px;
-      margin-right: 10px;
-      margin-bottom: 10px;
-    }
-
-    button {
-      padding: 6px 10px;
-      cursor: pointer;
-    }
+    th { background: #fafafa; }
 
     .profit {
       font-weight: bold;
@@ -59,12 +43,24 @@
     .green { color: green; }
     .red { color: red; }
 
-    .edit-input {
-      width: 80px;
+    input {
+      padding: 8px;
+      margin-right: 10px;
+      margin-bottom: 10px;
     }
 
-    .action-btn {
-      margin-right: 5px;
+    button {
+      padding: 8px 15px;
+      cursor: pointer;
+    }
+
+    .editable {
+      cursor: pointer;
+      background: #f9f9f9;
+    }
+
+    .editable:hover {
+      background: #eef;
     }
   </style>
 </head>
@@ -72,57 +68,53 @@
 
 <h1>📈 Pokemon Portfolio</h1>
 
+<!-- SUMMARY -->
 <div class="card">
   <h2>Summary</h2>
   <div id="summary"></div>
 </div>
 
+<!-- FILTERS -->
+<div class="card">
+  <h2>Filters</h2>
+  <input id="filterName" placeholder="Filter by name">
+  <input id="filterSet" placeholder="Filter by set">
+</div>
+
+<!-- CHART -->
 <div class="card">
   <h2>Portfolio Overview</h2>
   <canvas id="portfolioChart" height="100"></canvas>
 </div>
 
-<div class="card">
-  <h2>Filters</h2>
-  <input id="filterName" placeholder="Filter Name">
-  <input id="filterSet" placeholder="Filter Set">
-  <select id="filterCondition">
-    <option value="">All Conditions</option>
-    <option>NM</option>
-    <option>LP</option>
-    <option>MP</option>
-    <option>HP</option>
-  </select>
-  <button onclick="applyFilters()">Apply</button>
-  <button onclick="clearFilters()">Reset</button>
-</div>
-
+<!-- ADD ITEM -->
 <div class="card">
   <h2>Add Item</h2>
+
   <form id="itemForm">
     <input id="name" placeholder="Name" required />
     <input id="set" placeholder="Set Name" />
     <input id="condition" placeholder="Condition" />
-    <input id="quantity" type="number" placeholder="Qty" value="1" required />
+    <input id="quantity" type="number" placeholder="Quantity" value="1" required />
     <input id="purchase_price" type="number" placeholder="Purchase €" required />
     <input id="current_price" type="number" placeholder="Current €" required />
     <button type="submit">Add</button>
   </form>
 </div>
 
+<!-- TABLE -->
 <div class="card">
   <h2>Items</h2>
   <table id="itemsTable">
     <thead>
       <tr>
-        <th onclick="sortBy('name')">Name</th>
-        <th onclick="sortBy('set_name')">Set</th>
-        <th onclick="sortBy('condition')">Condition</th>
-        <th onclick="sortBy('quantity')">Qty</th>
-        <th onclick="sortBy('purchase_price')">Purchase €</th>
-        <th onclick="sortBy('current_price')">Current €</th>
+        <th>Name</th>
+        <th>Set</th>
+        <th>Condition</th>
+        <th>Qty</th>
+        <th>Purchase €</th>
+        <th>Current €</th>
         <th>Profit €</th>
-        <th>Actions</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -130,216 +122,166 @@
 </div>
 
 <script>
-let allItems = []
-let filteredItems = []
 let chartInstance = null
-let sortKey = null
-let sortAsc = true
+let allItems = []
 
+// ---------- LOAD DATA ----------
 async function loadData() {
   const res = await fetch('/api/dashboard')
   const data = await res.json()
 
   allItems = data.items
-  filteredItems = [...allItems]
-
-  renderAll()
+  render(allItems)
 }
 
-function renderAll() {
-  renderSummary()
-  renderTable()
-  renderChart()
-}
+// ---------- RENDER EVERYTHING ----------
+function render(items) {
 
-function renderSummary() {
-  const totalItems = filteredItems.length
-
-  const totalPurchase = filteredItems.reduce((sum, i) =>
-    sum + (i.purchase_price * i.quantity), 0)
-
-  const totalCurrent = filteredItems.reduce((sum, i) =>
-    sum + (i.current_price * i.quantity), 0)
-
+  // ----- SUMMARY -----
+  const totalPurchase = items.reduce((sum, i) => sum + (i.purchase_price * i.quantity), 0)
+  const totalCurrent = items.reduce((sum, i) => sum + (i.current_price * i.quantity), 0)
   const profit = totalCurrent - totalPurchase
-  const profitPercent = totalPurchase > 0
-    ? ((profit / totalPurchase) * 100).toFixed(2)
-    : 0
 
+  const summaryDiv = document.getElementById('summary')
   const profitClass = profit >= 0 ? 'green' : 'red'
 
-  document.getElementById('summary').innerHTML = `
-    <p>Total Items: ${totalItems}</p>
+  summaryDiv.innerHTML = `
+    <p>Total Items: ${items.length}</p>
     <p>Total Purchase Value: € ${totalPurchase}</p>
     <p>Total Current Value: € ${totalCurrent}</p>
     <p class="profit ${profitClass}">
-      Total Profit: € ${profit} (${profitPercent}%)
+      Total Profit: € ${profit}
     </p>
   `
-}
 
-function renderTable() {
+  // ----- TABLE -----
   const tbody = document.querySelector('#itemsTable tbody')
   tbody.innerHTML = ''
 
-  filteredItems.forEach(item => {
+  items.forEach(item => {
     const profit = (item.current_price - item.purchase_price) * item.quantity
-    const profitPercent = item.purchase_price > 0
-      ? ((profit / (item.purchase_price * item.quantity)) * 100).toFixed(2)
-      : 0
 
-    const profitClass = profit >= 0 ? 'green' : 'red'
+    const row = `
+    <tr>
+      <td>${item.name}</td>
+      <td>${item.set_name || ''}</td>
+      <td>${item.condition || ''}</td>
+      <td>${item.quantity}</td>
 
-    tbody.innerHTML += `
-      <tr>
-        <td>${item.name}</td>
-        <td>${item.set_name || ''}</td>
-        <td>${item.condition || ''}</td>
-        <td>${item.quantity}</td>
-        <td>€ ${item.purchase_price}</td>
-        <td>€ ${item.current_price}</td>
-        <td class="${profitClass}">
-          € ${profit} (${profitPercent}%)
-        </td>
-        <td>
-          <button class="action-btn" onclick="editItem('${item.id}')">Edit</button>
-          <button onclick="deleteItem('${item.id}')">Delete</button>
-        </td>
-      </tr>
+      <td class="editable" data-id="${item.id}" data-field="purchase_price">
+        € ${item.purchase_price}
+      </td>
+
+      <td class="editable" data-id="${item.id}" data-field="current_price">
+        € ${item.current_price}
+      </td>
+
+      <td>€ ${profit}</td>
+    </tr>
     `
+
+    tbody.innerHTML += row
   })
+
+  enableInlineEdit()
+  updateChart(totalPurchase, totalCurrent)
 }
 
-function renderChart() {
-  const totalPurchase = filteredItems.reduce((sum, i) =>
-    sum + (i.purchase_price * i.quantity), 0)
+// ---------- INLINE EDIT ----------
+function enableInlineEdit() {
+  document.querySelectorAll('.editable').forEach(cell => {
+    cell.onclick = async () => {
 
-  const totalCurrent = filteredItems.reduce((sum, i) =>
-    sum + (i.current_price * i.quantity), 0)
+      const oldValue = cell.innerText.replace('€','').trim()
+      const input = document.createElement('input')
+      input.type = 'number'
+      input.value = oldValue
 
-  const profit = totalCurrent - totalPurchase
+      cell.innerHTML = ''
+      cell.appendChild(input)
+      input.focus()
 
-  const ctx = document.getElementById('portfolioChart')
+      input.onblur = async () => {
+        const newValue = parseFloat(input.value)
 
-  if (chartInstance) {
-    chartInstance.destroy()
-  }
+        const id = cell.dataset.id
+        const field = cell.dataset.field
 
-  chartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: ['Purchase', 'Current', 'Profit'],
-      datasets: [{
-        label: 'Portfolio €',
-        data: [totalPurchase, totalCurrent, profit],
-        backgroundColor: [
-          '#3498db',   // blauw
-          '#2ecc71',   // groen
-          profit >= 0 ? '#27ae60' : '#e74c3c' // winst groen / verlies rood
-        ]
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false }
+        await fetch('/api/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, field, value: newValue })
+        })
+
+        loadData()
       }
     }
   })
 }
 
+// ---------- CHART ----------
+function updateChart(purchase, current) {
+  const ctx = document.getElementById('portfolioChart')
+
+  if (chartInstance) chartInstance.destroy()
+
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Purchase Value', 'Current Value'],
+      datasets: [{
+        label: 'Portfolio €',
+        data: [purchase, current],
+        backgroundColor: ['#3498db', '#2ecc71']
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } }
+    }
+  })
+}
+
+// ---------- FILTERS ----------
+document.getElementById('filterName').addEventListener('input', applyFilters)
+document.getElementById('filterSet').addEventListener('input', applyFilters)
+
 function applyFilters() {
-  const name = document.getElementById('filterName').value.toLowerCase()
-  const set = document.getElementById('filterSet').value.toLowerCase()
-  const condition = document.getElementById('filterCondition').value
+  const nameFilter = document.getElementById('filterName').value.toLowerCase()
+  const setFilter = document.getElementById('filterSet').value.toLowerCase()
 
-  filteredItems = allItems.filter(item =>
-    item.name.toLowerCase().includes(name) &&
-    (item.set_name || '').toLowerCase().includes(set) &&
-    (condition === '' || item.condition === condition)
-  )
-
-  renderAll()
-}
-
-function clearFilters() {
-  document.getElementById('filterName').value = ''
-  document.getElementById('filterSet').value = ''
-  document.getElementById('filterCondition').value = ''
-  filteredItems = [...allItems]
-  renderAll()
-}
-
-function sortBy(key) {
-  if (sortKey === key) sortAsc = !sortAsc
-  else { sortKey = key; sortAsc = true }
-
-  filteredItems.sort((a,b) => {
-    if (a[key] < b[key]) return sortAsc ? -1 : 1
-    if (a[key] > b[key]) return sortAsc ? 1 : -1
-    return 0
+  const filtered = allItems.filter(item => {
+    return item.name.toLowerCase().includes(nameFilter) &&
+           (item.set_name || '').toLowerCase().includes(setFilter)
   })
 
-  renderAll()
+  render(filtered)
 }
 
-async function deleteItem(id) {
-  await fetch('/api/delete-item', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id })
-  })
-
-  allItems = allItems.filter(i => i.id !== id)
-  filteredItems = filteredItems.filter(i => i.id !== id)
-  renderAll()
-}
-
-function editItem(id) {
-  const item = allItems.find(i => i.id === id)
-  const newPurchase = prompt("New purchase price:", item.purchase_price)
-  const newCurrent = prompt("New current price:", item.current_price)
-
-  if (newPurchase === null || newCurrent === null) return
-
-  updateItem(id, newPurchase, newCurrent)
-}
-
-async function updateItem(id, purchase_price, current_price) {
-  await fetch('/api/update-item', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, purchase_price, current_price })
-  })
-
-  const item = allItems.find(i => i.id === id)
-  item.purchase_price = Number(purchase_price)
-  item.current_price = Number(current_price)
-
-  renderAll()
-}
-
-document.getElementById('itemForm').addEventListener('submit', async function(e) {
+// ---------- ADD ITEM ----------
+document.getElementById('itemForm').addEventListener('submit', async e => {
   e.preventDefault()
 
-  const item = {
-    name: name.value,
-    set_name: set.value,
-    condition: condition.value,
-    quantity: Number(quantity.value),
-    purchase_price: Number(purchase_price.value),
-    current_price: Number(current_price.value)
+  const newItem = {
+    name: document.getElementById('name').value,
+    set_name: document.getElementById('set').value,
+    condition: document.getElementById('condition').value,
+    quantity: parseInt(document.getElementById('quantity').value),
+    purchase_price: parseFloat(document.getElementById('purchase_price').value),
+    current_price: parseFloat(document.getElementById('current_price').value)
   }
 
-  await fetch('/api/add-item', {
+  await fetch('/api/add', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(item)
+    body: JSON.stringify(newItem)
   })
 
-  location.reload()
+  e.target.reset()
+  loadData()
 })
 
+// START
 loadData()
 </script>
 
