@@ -25,7 +25,7 @@
     }
 
     .hero-number {
-      font-size: 58px;
+      font-size: 56px;
       font-weight: 700;
       transition: all 0.4s ease;
     }
@@ -39,11 +39,8 @@
       margin-top: 10px;
     }
 
-    .green { color: #4ade80; }
-    .red { color: #f87171; }
-
     .section {
-      margin-bottom: 60px;
+      margin-bottom: 50px;
     }
 
     .card {
@@ -55,7 +52,7 @@
     }
 
     canvas {
-      max-height: 220px !important;
+      max-height: 200px !important;
     }
 
     table {
@@ -115,13 +112,12 @@
     }
 
     .manage-section.open {
-      max-height: 3000px;
+      max-height: 4000px;
       margin-top: 40px;
     }
 
-    .editable {
-      cursor: pointer;
-    }
+    .green { color: #4ade80; }
+    .red { color: #f87171; }
 
     .badge {
       padding: 4px 10px;
@@ -133,6 +129,7 @@
     .badge.gold { color: #d4af37; border-color: #d4af37; }
     .badge.green { color: #4ade80; border-color: #4ade80; }
     .badge.red { color: #f87171; border-color: #f87171; }
+
   </style>
 </head>
 
@@ -144,6 +141,12 @@
   <div>Total Portfolio Value</div>
   <div id="portfolioValue" class="hero-number"></div>
   <div id="roiDisplay" class="roi"></div>
+
+  <div style="margin-top:25px;">
+    <div style="font-size:14px; opacity:0.6;">Investment Rating</div>
+    <div id="portfolioScore" style="font-size:32px; margin-top:5px;"></div>
+    <canvas id="scoreChart" height="120"></canvas>
+  </div>
 </div>
 
 <div class="section card">
@@ -205,8 +208,9 @@
 </div>
 
 <script>
+
 let allItems = []
-let valueChart, growthChart
+let valueChart, growthChart, scoreChart
 
 function toggleManage(){
   document.getElementById("manageSection").classList.toggle("open")
@@ -239,18 +243,41 @@ function render(items){
   const invest = items.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
   const current = items.reduce((s,i)=>s+i.current_price*i.quantity,0)
   const profit = current-invest
-  const roi = ((profit/invest)*100).toFixed(2)
+  const roi = ((profit/invest)*100)
 
-  const valueEl=document.getElementById("portfolioValue")
-  animateNumber(valueEl,current)
-  if(roi>100)valueEl.classList.add("gold-glow")
+  animateNumber(document.getElementById("portfolioValue"),current)
 
-  document.getElementById("roiDisplay").innerHTML=
-    `<span class="${profit>=0?'green':'red'}">ROI ${roi}%</span>`
+  document.getElementById("roiDisplay").innerHTML =
+    `<span class="${profit>=0?'green':'red'}">ROI ${roi.toFixed(2)}%</span>`
 
+  const score = Math.min(100, Math.max(0, Math.round(roi)))
+  document.getElementById("portfolioScore").innerHTML = `${score} / 100`
+
+  renderScoreChart(score)
   renderCharts(invest,current)
-  renderTable(items)
   renderTop(items)
+  renderTable(items)
+}
+
+function renderScoreChart(score){
+  if(scoreChart) scoreChart.destroy()
+
+  scoreChart = new Chart(document.getElementById("scoreChart"),{
+    type:"doughnut",
+    data:{
+      labels:["Score","Remaining"],
+      datasets:[{
+        data:[score,100-score],
+        backgroundColor:["#d4af37","#333"],
+        circumference:180,
+        rotation:270
+      }]
+    },
+    options:{
+      plugins:{legend:{display:false}},
+      cutout:"75%"
+    }
+  })
 }
 
 function renderCharts(invest,current){
@@ -305,9 +332,7 @@ function renderTable(items){
         <td>${i.name}</td>
         <td>${i.product_type||""}</td>
         <td>€ ${i.purchase_price}</td>
-        <td class="editable" data-id="${i.id}" data-field="current_price">
-          € ${i.current_price}
-        </td>
+        <td>€ ${i.current_price}</td>
         <td class="${profit>=0?'green':'red'}">
           € ${profit.toLocaleString()}
         </td>
@@ -316,32 +341,6 @@ function renderTable(items){
         <td><button onclick="deleteItem('${i.id}')">❌</button></td>
       </tr>
     `
-  })
-
-  enableInline()
-}
-
-function enableInline(){
-  document.querySelectorAll('.editable').forEach(cell=>{
-    cell.onclick=()=>{
-      const id=cell.dataset.id
-      const field=cell.dataset.field
-      const value=cell.innerText.replace("€","").trim()
-      const input=document.createElement("input")
-      input.type="number"
-      input.value=value
-      cell.innerHTML=""
-      cell.appendChild(input)
-      input.focus()
-      input.onblur=async()=>{
-        await fetch('/api/update-item',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({id,field,value:input.value})
-        })
-        loadData()
-      }
-    }
   })
 }
 
