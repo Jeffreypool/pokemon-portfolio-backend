@@ -11,71 +11,83 @@
     body {
       margin: 0;
       padding: 60px;
-      background: radial-gradient(circle at top, #1c1c1c, #000000);
+      background: radial-gradient(circle at top, #1a1a1a, #000000);
       font-family: 'Inter', sans-serif;
       color: #f5f5f5;
     }
 
     h1 {
       font-family: 'Playfair Display', serif;
-      font-size: 40px;
+      font-size: 36px;
       letter-spacing: 2px;
       margin-bottom: 60px;
       color: #d4af37;
     }
 
-    .hero {
-      margin-bottom: 80px;
-    }
-
-    .big-number {
+    .hero-number {
       font-size: 60px;
       font-weight: 700;
       margin-top: 10px;
     }
 
     .roi {
-      font-size: 24px;
-      margin-top: 15px;
-      letter-spacing: 1px;
+      font-size: 22px;
+      margin-top: 10px;
     }
 
-    .gold {
-      color: #d4af37;
-    }
-
-    .green {
-      color: #4ade80;
-    }
-
-    .red {
-      color: #f87171;
-    }
+    .green { color: #4ade80; }
+    .red { color: #f87171; }
 
     .section {
       margin-bottom: 80px;
     }
 
-    canvas {
+    .card {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(10px);
+      padding: 25px;
+      border-radius: 18px;
+      margin-bottom: 30px;
+    }
+
+    .collapse-btn {
+      background: #d4af37;
+      color: black;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .manage {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.5s ease;
+    }
+
+    .manage.open {
+      max-height: 2000px;
       margin-top: 30px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 40px;
+      margin-top: 20px;
+      font-size: 14px;
+      opacity: 0.85;
     }
 
     th, td {
-      padding: 16px;
-      text-align: left;
+      padding: 12px;
       border-bottom: 1px solid #333;
     }
 
     th {
-      color: #888;
-      font-size: 13px;
+      font-size: 12px;
       text-transform: uppercase;
+      color: #888;
       letter-spacing: 1px;
     }
 
@@ -83,29 +95,22 @@
       background: rgba(212,175,55,0.05);
     }
 
-    .badge {
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      background: #222;
+    input, select {
+      padding: 6px 10px;
+      background: #111;
+      color: white;
       border: 1px solid #333;
+      border-radius: 6px;
+      margin-right: 10px;
+      margin-bottom: 10px;
     }
 
-    .badge.high {
-      border-color: #d4af37;
-      color: #d4af37;
+    button.small {
+      padding: 5px 10px;
+      font-size: 12px;
+      border-radius: 6px;
     }
 
-    .badge.medium {
-      border-color: #4ade80;
-      color: #4ade80;
-    }
-
-    .badge.low {
-      border-color: #f87171;
-      color: #f87171;
-    }
   </style>
 </head>
 
@@ -113,157 +118,179 @@
 
 <h1>POKEMON INVESTMENT PORTFOLIO</h1>
 
-<div class="hero">
+<div class="section">
   <div>Total Portfolio Value</div>
-  <div id="portfolioValue" class="big-number gold"></div>
+  <div id="portfolioValue" class="hero-number"></div>
   <div id="roiDisplay" class="roi"></div>
 </div>
 
-<div class="section">
+<div class="section card">
   <canvas id="valueChart" height="120"></canvas>
 </div>
 
-<div class="section">
+<div class="section card">
   <canvas id="breakdownChart" height="120"></canvas>
 </div>
 
-<div class="section">
-  <table>
-    <thead>
-      <tr>
-        <th>Asset</th>
-        <th>Type</th>
-        <th>Investment</th>
-        <th>Current</th>
-        <th>Profit</th>
-        <th>Performance</th>
-      </tr>
-    </thead>
-    <tbody id="itemsBody"></tbody>
-  </table>
+<button class="collapse-btn" onclick="toggleManage()">⚙ Manage Portfolio</button>
+
+<div id="manageSection" class="manage">
+
+  <div class="card">
+    <h3>Add Item</h3>
+    <form id="itemForm">
+      <input id="name" placeholder="Name" required />
+      <input id="set" placeholder="Set" />
+      <input id="condition" placeholder="Condition" />
+      <input id="quantity" type="number" value="1" required />
+      <input id="purchase_price" type="number" placeholder="Purchase €" required />
+      <input id="current_price" type="number" placeholder="Current €" required />
+      <select id="product_type">
+        <option>Booster Box</option>
+        <option>ETB</option>
+        <option>Loose Pack</option>
+        <option>Single Card</option>
+      </select>
+      <button>Add</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Portfolio Table</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Investment</th>
+          <th>Current</th>
+          <th>Profit</th>
+          <th>Delete</th>
+        </tr>
+      </thead>
+      <tbody id="itemsBody"></tbody>
+    </table>
+  </div>
+
 </div>
 
 <script>
+let allItems = []
 let valueChart = null
 let breakdownChart = null
 
-async function loadData() {
-  const res = await fetch('/api/dashboard')
-  const data = await res.json()
-
-  render(data.items)
+function toggleManage(){
+  document.getElementById("manageSection").classList.toggle("open")
 }
 
-function render(items) {
+async function loadData(){
+  const res = await fetch('/api/dashboard')
+  const data = await res.json()
+  allItems = data.items
+  render(allItems)
+}
 
-  const totalInvestment = items.reduce((sum,i)=>sum+i.purchase_price*i.quantity,0)
-  const totalCurrent = items.reduce((sum,i)=>sum+i.current_price*i.quantity,0)
-  const totalProfit = totalCurrent - totalInvestment
-  const roi = ((totalProfit/totalInvestment)*100).toFixed(2)
+function render(items){
 
-  document.getElementById('portfolioValue').innerHTML =
+  const totalInvestment = items.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
+  const totalCurrent = items.reduce((s,i)=>s+i.current_price*i.quantity,0)
+  const profit = totalCurrent-totalInvestment
+  const roi = ((profit/totalInvestment)*100).toFixed(2)
+
+  document.getElementById("portfolioValue").innerHTML =
     `€ ${totalCurrent.toLocaleString()}`
 
-  document.getElementById('roiDisplay').innerHTML =
-    `<span class="${roi>=0?'green':'red'}">ROI ${roi}%</span>`
+  document.getElementById("roiDisplay").innerHTML =
+    `<span class="${profit>=0?'green':'red'}">ROI ${roi}%</span>`
 
-  renderValueChart(totalInvestment,totalCurrent)
-  renderBreakdownChart(items)
+  renderCharts(items,totalInvestment,totalCurrent)
   renderTable(items)
 }
 
-function renderValueChart(invest,current){
-
-  const ctx=document.getElementById('valueChart')
+function renderCharts(items,invest,current){
 
   if(valueChart) valueChart.destroy()
-
-  valueChart=new Chart(ctx,{
-    type:'bar',
+  valueChart = new Chart(document.getElementById("valueChart"),{
+    type:"bar",
     data:{
-      labels:['Investment','Current Value'],
+      labels:["Investment","Current Value"],
       datasets:[{
         data:[invest,current],
-        backgroundColor:['#444','#d4af37'],
-        borderRadius:12
+        backgroundColor:["#444","#d4af37"],
+        borderRadius:10
       }]
     },
-    options:{
-      plugins:{legend:{display:false}},
-      scales:{
-        y:{ticks:{color:'#aaa'}},
-        x:{ticks:{color:'#aaa'}}
-      }
-    }
+    options:{plugins:{legend:{display:false}}}
   })
-}
 
-function renderBreakdownChart(items){
-
-  const totals={}
+  const typeTotals={}
   items.forEach(i=>{
     if(!i.product_type)return
-    totals[i.product_type]=(totals[i.product_type]||0)+(i.current_price*i.quantity)
+    typeTotals[i.product_type]=(typeTotals[i.product_type]||0)+(i.current_price*i.quantity)
   })
 
-  const ctx=document.getElementById('breakdownChart')
-
   if(breakdownChart) breakdownChart.destroy()
-
-  breakdownChart=new Chart(ctx,{
-    type:'doughnut',
+  breakdownChart = new Chart(document.getElementById("breakdownChart"),{
+    type:"doughnut",
     data:{
-      labels:Object.keys(totals),
+      labels:Object.keys(typeTotals),
       datasets:[{
-        data:Object.values(totals),
-        backgroundColor:[
-          '#d4af37',
-          '#555',
-          '#888',
-          '#333'
-        ]
+        data:Object.values(typeTotals),
+        backgroundColor:["#d4af37","#555","#888","#333"]
       }]
-    },
-    options:{
-      plugins:{
-        legend:{position:'bottom',labels:{color:'#aaa'}}
-      }
     }
   })
 }
 
 function renderTable(items){
-
-  const tbody=document.getElementById('itemsBody')
-  tbody.innerHTML=''
+  const tbody=document.getElementById("itemsBody")
+  tbody.innerHTML=""
 
   items.forEach(i=>{
-
     const profit=(i.current_price-i.purchase_price)*i.quantity
-    const roi=((profit/(i.purchase_price*i.quantity))*100).toFixed(1)
-
-    let performance='medium'
-    if(roi>150)performance='high'
-    if(roi<0)performance='low'
 
     tbody.innerHTML+=`
       <tr>
         <td>${i.name}</td>
-        <td>${i.product_type||''}</td>
+        <td>${i.product_type||""}</td>
         <td>€ ${i.purchase_price}</td>
         <td>€ ${i.current_price}</td>
-        <td class="${profit>=0?'green':'red'}">
-          € ${profit.toLocaleString()}
-        </td>
-        <td>
-          <span class="badge ${performance}">
-            ${performance.toUpperCase()}
-          </span>
-        </td>
+        <td class="${profit>=0?'green':'red'}">€ ${profit.toLocaleString()}</td>
+        <td><button class="small" onclick="deleteItem('${i.id}')">❌</button></td>
       </tr>
     `
   })
 }
+
+async function deleteItem(id){
+  await fetch('/api/delete-item',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id})
+  })
+  loadData()
+}
+
+document.getElementById("itemForm").addEventListener("submit",async e=>{
+  e.preventDefault()
+
+  await fetch('/api/add-item',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      name:name.value,
+      set_name:set.value,
+      condition:condition.value,
+      quantity:Number(quantity.value),
+      purchase_price:Number(purchase_price.value),
+      current_price:Number(current_price.value),
+      product_type:product_type.value
+    })
+  })
+
+  e.target.reset()
+  loadData()
+})
 
 loadData()
 </script>
