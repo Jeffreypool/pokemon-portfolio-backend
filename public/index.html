@@ -20,7 +20,7 @@
       font-family: 'Playfair Display', serif;
       font-size: 36px;
       letter-spacing: 2px;
-      margin-bottom: 60px;
+      margin-bottom: 40px;
       color: #d4af37;
     }
 
@@ -62,6 +62,11 @@
       border-bottom: 1px solid #333;
     }
 
+    td.editable {
+      cursor: pointer;
+      border-bottom: 1px dashed #666;
+    }
+
     input, select {
       padding: 6px 10px;
       background: #111;
@@ -82,24 +87,6 @@
       font-weight: 600;
     }
 
-    .manage-toggle {
-      margin-top: 30px;
-      cursor: pointer;
-      color: #d4af37;
-      font-size: 14px;
-    }
-
-    .manage-section {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.4s ease;
-    }
-
-    .manage-section.open {
-      max-height: 3000px;
-      margin-top: 30px;
-    }
-
   </style>
 </head>
 
@@ -117,48 +104,51 @@
   <canvas id="valueChart"></canvas>
 </div>
 
-<div class="manage-toggle" onclick="toggleManage()">
-  ⚙ Manage Portfolio
+<div class="section card">
+  <h3>Filter</h3>
+  <select id="filterType">
+    <option value="all">All</option>
+    <option>Booster Box</option>
+    <option>ETB</option>
+    <option>Loose Pack</option>
+    <option>Single Card</option>
+  </select>
 </div>
 
-<div id="manageSection" class="manage-section">
+<div class="section card">
+  <h3>Add Item</h3>
+  <form id="itemForm">
+    <input id="name" placeholder="Name" required />
+    <input id="set" placeholder="Set" />
+    <input id="condition" placeholder="Condition" />
+    <input id="quantity" type="number" value="1" required />
+    <input id="purchase_price" type="number" placeholder="Purchase €" required />
+    <input id="current_price" type="number" placeholder="Current €" required />
+    <select id="product_type">
+      <option>Booster Box</option>
+      <option>ETB</option>
+      <option>Loose Pack</option>
+      <option>Single Card</option>
+    </select>
+    <button>Add</button>
+  </form>
+</div>
 
-  <div class="card">
-    <h3>Add Item</h3>
-    <form id="itemForm">
-      <input id="name" placeholder="Name" required />
-      <input id="set" placeholder="Set" />
-      <input id="condition" placeholder="Condition" />
-      <input id="quantity" type="number" value="1" required />
-      <input id="purchase_price" type="number" placeholder="Purchase €" required />
-      <input id="current_price" type="number" placeholder="Current €" required />
-      <select id="product_type">
-        <option>Booster Box</option>
-        <option>ETB</option>
-        <option>Loose Pack</option>
-        <option>Single Card</option>
-      </select>
-      <button>Add</button>
-    </form>
-  </div>
-
-  <div class="card">
-    <h3>Portfolio Table</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Asset</th>
-          <th>Type</th>
-          <th>Investment</th>
-          <th>Current</th>
-          <th>Profit</th>
-          <th>Delete</th>
-        </tr>
-      </thead>
-      <tbody id="itemsBody"></tbody>
-    </table>
-  </div>
-
+<div class="section card">
+  <h3>Portfolio Table</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Asset</th>
+        <th>Type</th>
+        <th>Investment</th>
+        <th>Current</th>
+        <th>Profit</th>
+        <th>Delete</th>
+      </tr>
+    </thead>
+    <tbody id="itemsBody"></tbody>
+  </table>
 </div>
 
 <script>
@@ -166,15 +156,22 @@
 let allItems = []
 let valueChart
 
-function toggleManage(){
-  document.getElementById("manageSection").classList.toggle("open")
-}
-
 async function loadData(){
   const res = await fetch('/api/dashboard')
   const data = await res.json()
   allItems = data.items
-  render(allItems)
+  applyFilter()
+}
+
+function applyFilter(){
+  const selected = document.getElementById("filterType").value
+  let filtered = allItems
+
+  if(selected !== "all"){
+    filtered = allItems.filter(i => i.product_type === selected)
+  }
+
+  render(filtered)
 }
 
 function render(items){
@@ -182,7 +179,7 @@ function render(items){
   const invest = items.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
   const current = items.reduce((s,i)=>s+i.current_price*i.quantity,0)
   const profit = current-invest
-  const roi = ((profit/invest)*100).toFixed(2)
+  const roi = invest > 0 ? ((profit/invest)*100).toFixed(2) : 0
 
   document.getElementById("portfolioValue").innerHTML =
     "€ " + current.toLocaleString()
@@ -214,12 +211,15 @@ function renderTable(items){
 
   items.forEach(i=>{
     const profit=(i.current_price-i.purchase_price)*i.quantity
+
     tbody.innerHTML+=`
       <tr>
         <td>${i.name}</td>
         <td>${i.product_type||""}</td>
         <td>€ ${i.purchase_price}</td>
-        <td>€ ${i.current_price}</td>
+        <td class="editable" data-id="${i.id}">
+          € ${i.current_price}
+        </td>
         <td class="${profit>=0?'green':'red'}">
           € ${profit.toLocaleString()}
         </td>
@@ -228,6 +228,37 @@ function renderTable(items){
         </td>
       </tr>
     `
+  })
+
+  enableInlineEdit()
+}
+
+function enableInlineEdit(){
+  document.querySelectorAll(".editable").forEach(cell=>{
+    cell.onclick = function(){
+      const id = this.dataset.id
+      const oldValue = this.innerText.replace("€","").trim()
+
+      this.innerHTML = `<input type="number" value="${oldValue}" style="width:80px;">`
+      const input = this.querySelector("input")
+      input.focus()
+
+      input.onblur = async ()=>{
+        const newValue = Number(input.value)
+
+        await fetch('/api/update-item',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            id: id,
+            field: 'current_price',
+            value: newValue
+          })
+        })
+
+        loadData()
+      }
+    }
   })
 }
 
@@ -262,6 +293,8 @@ document.getElementById("itemForm").addEventListener("submit",async e=>{
   e.target.reset()
   loadData()
 })
+
+document.getElementById("filterType").addEventListener("change", applyFilter)
 
 loadData()
 
