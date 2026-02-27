@@ -4,22 +4,14 @@
   <title>Pokemon Portfolio</title>
   <meta charset="UTF-8" />
   <style>
-    form input {
-  padding: 8px;
-  margin: 5px 5px 10px 0;
-}
-
-form button {
-  padding: 8px 15px;
-  background: #4CAF50;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
     body {
       font-family: Arial;
       padding: 40px;
       background: #f5f5f5;
+    }
+
+    h1 {
+      margin-bottom: 30px;
     }
 
     .card {
@@ -28,10 +20,6 @@ form button {
       margin-bottom: 20px;
       border-radius: 10px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-
-    h1 {
-      margin-bottom: 30px;
     }
 
     table {
@@ -56,25 +44,22 @@ form button {
 
     .green { color: green; }
     .red { color: red; }
+
+    input {
+      padding: 8px;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      padding: 8px 15px;
+      cursor: pointer;
+    }
   </style>
 </head>
-
 <body>
 
 <h1>📈 Pokemon Portfolio</h1>
-  <div class="card">
-  <h2>➕ Add Item</h2>
-
-  <form id="addItemForm">
-    <input type="text" id="name" placeholder="Name (Charizard)" required />
-    <input type="text" id="set_name" placeholder="Set (Base Set)" />
-    <input type="text" id="condition" placeholder="Condition (NM)" />
-    <input type="number" id="quantity" placeholder="Quantity" value="1" />
-    <input type="number" id="purchase_price" placeholder="Purchase Price (€)" required />
-
-    <button type="submit">Add Item</button>
-  </form>
-</div>
 
 <div class="card">
   <h2>Summary</h2>
@@ -82,7 +67,23 @@ form button {
 </div>
 
 <div class="card">
+  <h2>Add Item</h2>
+
+  <form id="itemForm">
+    <input id="name" placeholder="Name" required />
+    <input id="set" placeholder="Set Name" />
+    <input id="condition" placeholder="Condition" />
+    <input id="quantity" type="number" placeholder="Quantity" value="1" required />
+    <input id="purchase_price" type="number" placeholder="Purchase €" required />
+    <input id="current_price" type="number" placeholder="Current €" required />
+    <button type="submit">Add</button>
+  </form>
+
+</div>
+
+<div class="card">
   <h2>Items</h2>
+
   <table id="itemsTable">
     <thead>
       <tr>
@@ -101,52 +102,72 @@ form button {
 
 <script>
 async function loadData() {
-  try {
-    const res = await fetch('/api/dashboard')
-    const data = await res.json()
+  const res = await fetch('/api/dashboard')
+  const data = await res.json()
 
-    if (!data.summary) {
-      console.error("No summary returned", data)
-      return
-    }
+  const summaryDiv = document.getElementById('summary')
+  const profitClass = data.summary.profit >= 0 ? 'green' : 'red'
 
-    const summaryDiv = document.getElementById('summary')
-    const profitClass = data.summary.profit >= 0 ? 'green' : 'red'
+  summaryDiv.innerHTML = `
+    <p>Total Items: ${data.summary.total_items}</p>
+    <p>Total Purchase Value: € ${data.summary.total_purchase_value}</p>
+    <p>Total Current Value: € ${data.summary.total_current_value}</p>
+    <p class="profit ${profitClass}">
+      Total Profit: € ${data.summary.profit}
+    </p>
+  `
 
-    summaryDiv.innerHTML = `
-      <p>Total Items: ${data.summary.total_items}</p>
-      <p>Total Purchase Value: € ${data.summary.total_purchase_value}</p>
-      <p>Total Current Value: € ${data.summary.total_current_value}</p>
-      <p class="profit ${profitClass}">
-        Total Profit: € ${data.summary.profit}
-      </p>
+  const tbody = document.querySelector('#itemsTable tbody')
+  tbody.innerHTML = ''
+
+  data.items.forEach(item => {
+    const profit = (item.current_price - item.purchase_price) * item.quantity
+
+    const row = `
+      <tr>
+        <td>${item.name}</td>
+        <td>${item.set_name || ''}</td>
+        <td>${item.condition || ''}</td>
+        <td>${item.quantity}</td>
+        <td>€ ${item.purchase_price}</td>
+        <td>€ ${item.current_price}</td>
+        <td>€ ${profit}</td>
+      </tr>
     `
 
-    const tbody = document.querySelector('#itemsTable tbody')
-    tbody.innerHTML = ''
-
-    data.items.forEach(item => {
-      const profit = (item.current_price - item.purchase_price) * item.quantity
-
-      const row = `
-        <tr>
-          <td>${item.name}</td>
-          <td>${item.set_name || ''}</td>
-          <td>${item.condition || ''}</td>
-          <td>${item.quantity}</td>
-          <td>€ ${item.purchase_price}</td>
-          <td>€ ${item.current_price}</td>
-          <td>€ ${profit}</td>
-        </tr>
-      `
-
-      tbody.innerHTML += row
-    })
-
-  } catch (error) {
-    console.error("Error loading dashboard:", error)
-  }
+    tbody.innerHTML += row
+  })
 }
+
+async function addItem(event) {
+  event.preventDefault()
+
+  const name = document.getElementById('name').value
+  const set_name = document.getElementById('set').value
+  const condition = document.getElementById('condition').value
+  const quantity = parseInt(document.getElementById('quantity').value)
+  const purchase_price = parseFloat(document.getElementById('purchase_price').value)
+  const current_price = parseFloat(document.getElementById('current_price').value)
+
+  await fetch('/api/add-item', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name,
+      set_name,
+      condition,
+      quantity,
+      purchase_price,
+      current_price
+    })
+  })
+
+  document.getElementById('itemForm').reset()
+  loadData()
+}
+
+document.getElementById('itemForm')
+  .addEventListener('submit', addItem)
 
 loadData()
 </script>
