@@ -217,23 +217,33 @@ function renderChart() {
   const totalCurrent = filteredItems.reduce((sum, i) =>
     sum + (i.current_price * i.quantity), 0)
 
+  const profit = totalCurrent - totalPurchase
+
   const ctx = document.getElementById('portfolioChart')
 
-  if (chartInstance) chartInstance.destroy()
+  if (chartInstance) {
+    chartInstance.destroy()
+  }
 
   chartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: ['Purchase Value', 'Current Value'],
+      labels: ['Purchase', 'Current', 'Profit'],
       datasets: [{
         label: 'Portfolio €',
-        data: [totalPurchase, totalCurrent],
-        backgroundColor: ['#3498db', '#2ecc71']
+        data: [totalPurchase, totalCurrent, profit],
+        backgroundColor: [
+          '#3498db',   // blauw
+          '#2ecc71',   // groen
+          profit >= 0 ? '#27ae60' : '#e74c3c' // winst groen / verlies rood
+        ]
       }]
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false } }
+      plugins: {
+        legend: { display: false }
+      }
     }
   })
 }
