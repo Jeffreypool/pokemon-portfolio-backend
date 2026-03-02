@@ -144,8 +144,8 @@
         <th onclick="sortBy('quantity')">Qty</th>
         <th onclick="sortBy('purchase_price')">Investment</th>
         <th onclick="sortBy('current_price')">Current</th>
-        <th>Profit</th>
-        <th>ROI %</th>
+        <th onclick="sortBy('profit')">Profit</th>
+        <th onclick="sortBy('roi')">ROI %</th>
         <th>Delete</th>
       </tr>
     </thead>
@@ -195,6 +195,19 @@ function sortBy(field){
   }
 
   allItems.sort((a,b)=>{
+
+    if(field === 'profit'){
+      const profitA = (a.current_price - a.purchase_price) * a.quantity
+      const profitB = (b.current_price - b.purchase_price) * b.quantity
+      return (profitA - profitB) * sortDirection
+    }
+
+    if(field === 'roi'){
+      const roiA = ((a.current_price - a.purchase_price) / a.purchase_price)
+      const roiB = ((b.current_price - b.purchase_price) / b.purchase_price)
+      return (roiA - roiB) * sortDirection
+    }
+
     if(a[field] < b[field]) return -1 * sortDirection
     if(a[field] > b[field]) return 1 * sortDirection
     return 0
@@ -238,21 +251,12 @@ function renderTable(items){
   const tbody=document.getElementById("itemsBody")
   tbody.innerHTML=""
 
-  // bepaal top 3 ROI
-  const sortedByROI = [...items].sort((a,b)=>{
-    const roiA = (a.current_price - a.purchase_price) / a.purchase_price
-    const roiB = (b.current_price - b.purchase_price) / b.purchase_price
-    return roiB - roiA
-  })
-
-  const top3 = sortedByROI.slice(0,3).map(i=>i.id)
-
   items.forEach(i=>{
     const profit=(i.current_price-i.purchase_price)*i.quantity
     const roi=((profit/(i.purchase_price*i.quantity))*100).toFixed(1)
 
     tbody.innerHTML+=`
-      <tr class="${top3.includes(i.id)?'top-performer':''}">
+      <tr>
         <td>${i.name}</td>
         <td>${i.product_type||""}</td>
         <td style="text-align:center;">${i.quantity}</td>
