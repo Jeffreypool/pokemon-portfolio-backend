@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Pokemon Investment Pool </title>
+  <title>Pokemon Investment Portfolio</title>
   <meta charset="UTF-8" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -62,11 +62,6 @@
       border-bottom: 1px solid #333;
     }
 
-    td.editable {
-      cursor: pointer;
-      border-bottom: 1px dashed #666;
-    }
-
     input, select {
       padding: 6px 10px;
       background: #111;
@@ -105,13 +100,9 @@
 </div>
 
 <div class="section card">
-  <h3>Filter</h3>
+  <h3>Filter by Product Type</h3>
   <select id="filterType">
     <option value="all">All</option>
-    <option>Booster Box</option>
-    <option>ETB</option>
-    <option>Loose Pack</option>
-    <option>Single Card</option>
   </select>
 </div>
 
@@ -124,12 +115,11 @@
     <input id="quantity" type="number" value="1" required />
     <input id="purchase_price" type="number" placeholder="Purchase €" required />
     <input id="current_price" type="number" placeholder="Current €" required />
-    <select id="product_type">
-      <option>Booster Box</option>
-      <option>ETB</option>
-      <option>Loose Pack</option>
-      <option>Single Card</option>
-    </select>
+
+    <!-- Product Type vrij invoerbaar -->
+    <input id="product_type" list="productList" placeholder="Product Type (Booster Box, ETB, Case...)" />
+    <datalist id="productList"></datalist>
+
     <button>Add</button>
   </form>
 </div>
@@ -160,11 +150,29 @@ async function loadData(){
   const res = await fetch('/api/dashboard')
   const data = await res.json()
   allItems = data.items
+  populateProductTypes()
   applyFilter()
+}
+
+function populateProductTypes(){
+
+  const types = [...new Set(allItems.map(i => i.product_type).filter(Boolean))]
+
+  const filterSelect = document.getElementById("filterType")
+  filterSelect.innerHTML = '<option value="all">All</option>'
+
+  const dataList = document.getElementById("productList")
+  dataList.innerHTML = ''
+
+  types.forEach(type => {
+    filterSelect.innerHTML += `<option value="${type}">${type}</option>`
+    dataList.innerHTML += `<option value="${type}">`
+  })
 }
 
 function applyFilter(){
   const selected = document.getElementById("filterType").value
+
   let filtered = allItems
 
   if(selected !== "all"){
@@ -211,15 +219,12 @@ function renderTable(items){
 
   items.forEach(i=>{
     const profit=(i.current_price-i.purchase_price)*i.quantity
-
     tbody.innerHTML+=`
       <tr>
         <td>${i.name}</td>
         <td>${i.product_type||""}</td>
         <td>€ ${i.purchase_price}</td>
-        <td class="editable" data-id="${i.id}">
-          € ${i.current_price}
-        </td>
+        <td>€ ${i.current_price}</td>
         <td class="${profit>=0?'green':'red'}">
           € ${profit.toLocaleString()}
         </td>
@@ -228,37 +233,6 @@ function renderTable(items){
         </td>
       </tr>
     `
-  })
-
-  enableInlineEdit()
-}
-
-function enableInlineEdit(){
-  document.querySelectorAll(".editable").forEach(cell=>{
-    cell.onclick = function(){
-      const id = this.dataset.id
-      const oldValue = this.innerText.replace("€","").trim()
-
-      this.innerHTML = `<input type="number" value="${oldValue}" style="width:80px;">`
-      const input = this.querySelector("input")
-      input.focus()
-
-      input.onblur = async ()=>{
-        const newValue = Number(input.value)
-
-        await fetch('/api/update-item',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            id: id,
-            field: 'current_price',
-            value: newValue
-          })
-        })
-
-        loadData()
-      }
-    }
   })
 }
 
