@@ -135,19 +135,28 @@ button:hover {
   <div id="topAssetName" style="font-size:22px; font-weight:600; margin-top:8px;"></div>
   <div id="topAssetStats" style="margin-top:6px;"></div>
 </div>
-<div class="stats">
-  <div class="stat-card">
-    <div class="stat-title">Active Portfolio Value</div>
-    <div id="activeValue" class="stat-value"></div>
+<div class="card" style="margin-bottom:35px;">
+  <div style="font-size:13px; opacity:0.6;">Total Portfolio Value</div>
+  <div id="activeValue" style="font-size:34px; font-weight:600; margin-top:6px;"></div>
+
+  <div style="margin-top:18px; display:flex; gap:40px;">
+    <div>
+      <div style="font-size:12px; opacity:0.5;">Total Profit</div>
+      <div id="unrealizedProfit" style="font-size:16px; font-weight:500;"></div>
+    </div>
+
+    <div>
+      <div style="font-size:12px; opacity:0.5;">Total ROI</div>
+      <div id="heroROI" style="font-size:16px; font-weight:500;"></div>
+    </div>
   </div>
-  <div class="stat-card">
-    <div class="stat-title">Unrealized Profit</div>
-    <div id="unrealizedProfit" class="stat-value"></div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-title">Realized Profit</div>
-    <div id="realizedProfit" class="stat-value"></div>
-  </div>
+</div>
+
+<div class="card" style="margin-bottom:35px;">
+  <div style="font-size:13px; opacity:0.6;">Best Performing Asset</div>
+  <div id="topAssetName" style="font-size:20px; font-weight:600; margin-top:6px;"></div>
+  <div id="topAssetStats" style="margin-top:6px;"></div>
+</div>
 </div>
 
 <div class="card">
@@ -263,14 +272,36 @@ function render(){
 }
 
 function renderStats(active,sold){
+
   const invest = active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
   const current = active.reduce((s,i)=>s+i.current_price*i.quantity,0)
-  const unrealized = current-invest
-  const realized = sold.reduce((s,i)=>s+((i.sold_price-i.purchase_price)*i.quantity),0)
+  const unrealized = current - invest
 
-  document.getElementById("activeValue").innerHTML="€ "+current.toLocaleString()
-  document.getElementById("unrealizedProfit").innerHTML=`<span class="${unrealized>=0?'green':'red'}">€ ${unrealized.toLocaleString()}</span>`
-  document.getElementById("realizedProfit").innerHTML=`<span class="${realized>=0?'green':'red'}">€ ${realized.toLocaleString()}</span>`
+  const realized = sold.reduce((s,i)=>{
+    return s + ((i.sold_price - i.purchase_price) * i.quantity)
+  },0)
+
+  const totalProfit = unrealized + realized
+  const totalBase = invest + sold.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
+
+  const roi = totalBase > 0
+    ? ((totalProfit/totalBase)*100).toFixed(2)
+    : 0
+
+  document.getElementById("activeValue").innerHTML =
+    "€ " + current.toLocaleString()
+
+  document.getElementById("unrealizedProfit").innerHTML =
+    `<span class="${totalProfit>=0?'green':'red'}">
+      € ${totalProfit.toLocaleString()}
+    </span>`
+
+  document.getElementById("heroROI").innerHTML =
+    `<span class="${roi>=0?'green':'red'}">
+      ${roi}% 
+    </span>`
+
+  renderHeroAndTopPerformer(active,sold)
 }
   function renderHeroAndTopPerformer(active, sold){
 
