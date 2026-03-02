@@ -65,14 +65,11 @@
     th {
       cursor: pointer;
       color: #aaa;
+      user-select: none;
     }
 
-    th:hover {
+    th.active-sort {
       color: #d4af37;
-    }
-
-    tr.top-performer {
-      background: rgba(212,175,55,0.08);
     }
 
     input, select {
@@ -139,13 +136,13 @@
   <table>
     <thead>
       <tr>
-        <th onclick="sortBy('name')">Asset</th>
-        <th onclick="sortBy('product_type')">Type</th>
-        <th onclick="sortBy('quantity')">Qty</th>
-        <th onclick="sortBy('purchase_price')">Investment</th>
-        <th onclick="sortBy('current_price')">Current</th>
-        <th onclick="sortBy('profit')">Profit</th>
-        <th onclick="sortBy('roi')">ROI %</th>
+        <th onclick="sortBy('name', this)">Asset</th>
+        <th onclick="sortBy('product_type', this)">Type</th>
+        <th onclick="sortBy('quantity', this)">Qty</th>
+        <th onclick="sortBy('purchase_price', this)">Investment</th>
+        <th onclick="sortBy('current_price', this)">Current</th>
+        <th onclick="sortBy('profit', this)">Profit</th>
+        <th onclick="sortBy('roi', this)">ROI %</th>
         <th>Delete</th>
       </tr>
     </thead>
@@ -186,7 +183,15 @@ function applyFilter(){
   render(filtered)
 }
 
-function sortBy(field){
+function clearSortIndicators(){
+  document.querySelectorAll("th").forEach(th=>{
+    th.classList.remove("active-sort")
+    th.innerText = th.innerText.replace(" ↑","").replace(" ↓","")
+  })
+}
+
+function sortBy(field, element){
+
   if(currentSort === field){
     sortDirection *= -1
   } else {
@@ -212,6 +217,11 @@ function sortBy(field){
     if(a[field] > b[field]) return 1 * sortDirection
     return 0
   })
+
+  clearSortIndicators()
+
+  element.classList.add("active-sort")
+  element.innerText += sortDirection === 1 ? " ↑" : " ↓"
 
   applyFilter()
 }
