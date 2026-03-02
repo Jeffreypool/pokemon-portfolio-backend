@@ -124,7 +124,17 @@ button:hover {
 <body>
 
 <h1>POKEMON INVESTMENT PORTFOLIO</h1>
+<div class="card" id="growthHero" style="margin-bottom:30px;">
+  <div style="font-size:14px; opacity:0.6;">Total Performance Since Start</div>
+  <div id="heroProfit" style="font-size:36px; font-weight:700; margin-top:8px;"></div>
+  <div id="heroROI" style="font-size:16px; margin-top:6px;"></div>
+</div>
 
+<div class="card" id="topPerformerCard" style="margin-bottom:30px;">
+  <div style="font-size:14px; opacity:0.6;">Top Performing Asset</div>
+  <div id="topAssetName" style="font-size:22px; font-weight:600; margin-top:8px;"></div>
+  <div id="topAssetStats" style="margin-top:6px;"></div>
+</div>
 <div class="stats">
   <div class="stat-card">
     <div class="stat-title">Active Portfolio Value</div>
@@ -249,6 +259,7 @@ function render(){
   renderStats(active,sold)
   renderTables(active,sold)
   renderCharts(active,sold)
+  renderHeroAndTopPerformer(active, sold)
 }
 
 function renderStats(active,sold){
@@ -260,6 +271,50 @@ function renderStats(active,sold){
   document.getElementById("activeValue").innerHTML="€ "+current.toLocaleString()
   document.getElementById("unrealizedProfit").innerHTML=`<span class="${unrealized>=0?'green':'red'}">€ ${unrealized.toLocaleString()}</span>`
   document.getElementById("realizedProfit").innerHTML=`<span class="${realized>=0?'green':'red'}">€ ${realized.toLocaleString()}</span>`
+}
+  function renderHeroAndTopPerformer(active, sold){
+
+  const totalInvest = active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
+  const totalCurrent = active.reduce((s,i)=>s+i.current_price*i.quantity,0)
+  const unrealized = totalCurrent - totalInvest
+
+  const realized = sold.reduce((s,i)=>{
+    return s + ((i.sold_price - i.purchase_price) * i.quantity)
+  },0)
+
+  const totalProfit = unrealized + realized
+  const totalBase = totalInvest + (sold.reduce((s,i)=>s+i.purchase_price*i.quantity,0))
+
+  const roi = totalBase > 0
+    ? ((totalProfit/totalBase)*100).toFixed(2)
+    : 0
+
+  document.getElementById("heroProfit").innerHTML =
+    `<span class="${totalProfit>=0?'green':'red'}">
+      € ${totalProfit.toLocaleString()}
+    </span>`
+
+  document.getElementById("heroROI").innerHTML =
+    `<span class="${roi>=0?'green':'red'}">
+      ${roi}% ROI
+    </span>`
+
+  // Top performer (active only)
+  if(active.length > 0){
+    const sorted = [...active].sort((a,b)=>{
+      const roiA = (a.current_price-a.purchase_price)/a.purchase_price
+      const roiB = (b.current_price-b.purchase_price)/b.purchase_price
+      return roiB - roiA
+    })
+
+    const top = sorted[0]
+    const profit = (top.current_price-top.purchase_price)*top.quantity
+    const roiTop = ((profit/(top.purchase_price*top.quantity))*100).toFixed(1)
+
+    document.getElementById("topAssetName").innerHTML = top.name
+    document.getElementById("topAssetStats").innerHTML =
+      `<span class="green">€ ${profit.toLocaleString()}</span> • ${roiTop}% ROI`
+  }
 }
 
 function renderTables(active,sold){
