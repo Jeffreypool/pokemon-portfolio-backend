@@ -11,23 +11,35 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
+  const { id, purchase_price, current_price, quantity, product_type } = req.body
+
   try {
-    const { id, field, value } = req.body
 
-    if (!id || !field) {
-      return res.status(400).json({ error: 'Missing parameters' })
-    }
-
-    const updateObject = {}
-    updateObject[field] = value
-
-    const { error } = await supabase
+    // 1️⃣ Update portfolio item
+    const { error: updateError } = await supabase
       .from('portfolio_items')
-      .update(updateObject)
+      .update({
+        purchase_price,
+        current_price,
+        quantity,
+        product_type
+      })
       .eq('id', id)
 
-    if (error) {
-      return res.status(500).json({ error: error.message })
+    if (updateError) {
+      return res.status(500).json({ error: updateError.message })
+    }
+
+    // 2️⃣ Save price history snapshot
+    const { error: historyError } = await supabase
+      .from('price_history')
+      .insert({
+        item_id: id,
+        market_value: current_price
+      })
+
+    if (historyError) {
+      return res.status(500).json({ error: historyError.message })
     }
 
     return res.status(200).json({ success: true })
