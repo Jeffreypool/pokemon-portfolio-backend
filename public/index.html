@@ -362,7 +362,9 @@ function renderTables(active,sold){
         <td>${i.product_type||""}</td>
         <td class="center">${i.quantity}</td>
         <td class="right">€ ${i.purchase_price}</td>
-        <td class="right">€ ${i.current_price}</td>
+        <td class="right editable" data-id="${i.id}" data-value="${i.current_price}">
+  € ${i.current_price}
+</td>
         <td class="right ${profit>=0?'green':'red'}">€ ${profit.toLocaleString()}</td>
         <td class="right">${roi}%</td>
         <td class="center"><button onclick="sellItem('${i.id}')">💰</button></td>
@@ -370,6 +372,38 @@ function renderTables(active,sold){
       </tr>
     `
   })
+  function enableInlineEdit(){
+
+  document.querySelectorAll(".editable").forEach(cell=>{
+
+    cell.onclick = function(){
+
+      const id = this.dataset.id
+      const oldValue = this.dataset.value
+
+      this.innerHTML = `<input type="number" value="${oldValue}" style="width:80px;">`
+
+      const input = this.querySelector("input")
+      input.focus()
+
+      input.onblur = async ()=>{
+
+        const newValue = Number(input.value)
+
+        await fetch('/api/update-item',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            id: id,
+            current_price: newValue
+          })
+        })
+
+        loadData()
+      }
+    }
+  })
+}
 
   const soldBody=document.getElementById("soldBody")
   soldBody.innerHTML=""
@@ -493,6 +527,7 @@ function renderCharts(active, sold){
       }
     }
   })
+  enableInlineEdit()
 }
 
 function sortBy(field){
