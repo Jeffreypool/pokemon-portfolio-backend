@@ -63,15 +63,16 @@
     }
 
     th {
-      font-size: 12px;
-      text-transform: uppercase;
-      color: #888;
-      letter-spacing: 1px;
+      cursor: pointer;
+      color: #aaa;
     }
 
-    td.editable {
-      cursor: pointer;
-      border-bottom: 1px dashed #666;
+    th:hover {
+      color: #d4af37;
+    }
+
+    tr.top-performer {
+      background: rgba(212,175,55,0.08);
     }
 
     input, select {
@@ -138,13 +139,14 @@
   <table>
     <thead>
       <tr>
-        <th style="text-align:left;">Asset</th>
-        <th style="text-align:left;">Type</th>
-        <th style="text-align:center;">Qty</th>
-        <th style="text-align:right;">Investment</th>
-        <th style="text-align:right;">Current</th>
-        <th style="text-align:right;">Profit</th>
-        <th style="text-align:center;">Delete</th>
+        <th onclick="sortBy('name')">Asset</th>
+        <th onclick="sortBy('product_type')">Type</th>
+        <th onclick="sortBy('quantity')">Qty</th>
+        <th onclick="sortBy('purchase_price')">Investment</th>
+        <th onclick="sortBy('current_price')">Current</th>
+        <th>Profit</th>
+        <th>ROI %</th>
+        <th>Delete</th>
       </tr>
     </thead>
     <tbody id="itemsBody"></tbody>
@@ -155,6 +157,8 @@
 
 let allItems = []
 let valueChart
+let currentSort = null
+let sortDirection = 1
 
 async function loadData(){
   const res = await fetch('/api/dashboard')
@@ -166,42 +170,51 @@ async function loadData(){
 
 function populateProductTypes(){
   const types = [...new Set(allItems.map(i => i.product_type).filter(Boolean))]
-
   const filterSelect = document.getElementById("filterType")
   filterSelect.innerHTML = '<option value="all">All</option>'
-
-  const dataList = document.getElementById("productList")
-  dataList.innerHTML = ''
-
   types.forEach(type => {
     filterSelect.innerHTML += `<option value="${type}">${type}</option>`
-    dataList.innerHTML += `<option value="${type}">`
   })
 }
 
 function applyFilter(){
   const selected = document.getElementById("filterType").value
   let filtered = allItems
-
   if(selected !== "all"){
     filtered = allItems.filter(i => i.product_type === selected)
   }
-
   render(filtered)
+}
+
+function sortBy(field){
+  if(currentSort === field){
+    sortDirection *= -1
+  } else {
+    currentSort = field
+    sortDirection = 1
+  }
+
+  allItems.sort((a,b)=>{
+    if(a[field] < b[field]) return -1 * sortDirection
+    if(a[field] > b[field]) return 1 * sortDirection
+    return 0
+  })
+
+  applyFilter()
 }
 
 function render(items){
 
   const invest = items.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
   const current = items.reduce((s,i)=>s+i.current_price*i.quantity,0)
-  const profit = current-invest
-  const roi = invest > 0 ? ((profit/invest)*100).toFixed(2) : 0
+  const profitTotal = current-invest
+  const roiTotal = invest > 0 ? ((profitTotal/invest)*100).toFixed(2) : 0
 
   document.getElementById("portfolioValue").innerHTML =
     "€ " + current.toLocaleString()
 
   document.getElementById("roiDisplay").innerHTML =
-    `<span class="${profit>=0?'green':'red'}">ROI ${roi}%</span>`
+    `<span class="${profitTotal>=0?'green':'red'}">ROI ${roiTotal}%</span>`
 
   if(valueChart) valueChart.destroy()
 
@@ -225,57 +238,35 @@ function renderTable(items){
   const tbody=document.getElementById("itemsBody")
   tbody.innerHTML=""
 
+  // bepaal top 3 ROI
+  const sortedByROI = [...items].sort((a,b)=>{
+    const roiA = (a.current_price - a.purchase_price) / a.purchase_price
+    const roiB = (b.current_price - b.purchase_price) / b.purchase_price
+    return roiB - roiA
+  })
+
+  const top3 = sortedByROI.slice(0,3).map(i=>i.id)
+
   items.forEach(i=>{
     const profit=(i.current_price-i.purchase_price)*i.quantity
+    const roi=((profit/(i.purchase_price*i.quantity))*100).toFixed(1)
 
     tbody.innerHTML+=`
-      <tr>
-        <td style="text-align:left;">${i.name}</td>
-        <td style="text-align:left;">${i.product_type||""}</td>
+      <tr class="${top3.includes(i.id)?'top-performer':''}">
+        <td>${i.name}</td>
+        <td>${i.product_type||""}</td>
         <td style="text-align:center;">${i.quantity}</td>
         <td style="text-align:right;">€ ${i.purchase_price}</td>
-        <td style="text-align:right;" class="editable" data-id="${i.id}">
-          € ${i.current_price}
-        </td>
+        <td style="text-align:right;">€ ${i.current_price}</td>
         <td style="text-align:right;" class="${profit>=0?'green':'red'}">
           € ${profit.toLocaleString()}
         </td>
+        <td style="text-align:right;">${roi}%</td>
         <td style="text-align:center;">
           <button onclick="deleteItem('${i.id}')">❌</button>
         </td>
       </tr>
     `
-  })
-
-  enableInlineEdit()
-}
-
-function enableInlineEdit(){
-  document.querySelectorAll(".editable").forEach(cell=>{
-    cell.onclick = function(){
-      const id = this.dataset.id
-      const oldValue = this.innerText.replace("€","").trim()
-
-      this.innerHTML = `<input type="number" value="${oldValue}" style="width:80px;">`
-      const input = this.querySelector("input")
-      input.focus()
-
-      input.onblur = async ()=>{
-        const newValue = Number(input.value)
-
-        await fetch('/api/update-item',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            id: id,
-            field: 'current_price',
-            value: newValue
-          })
-        })
-
-        loadData()
-      }
-    }
   })
 }
 
