@@ -210,7 +210,11 @@ function renderTables(active,sold){
     body.innerHTML+=`
       <tr>
         <td>${i.name}</td>
-        <td class="center">${i.quantity}</td>
+        <td class="center">
+  <button onclick="changeQty('${i.id}', -1)">−</button>
+  <span style="margin:0 8px;">${i.quantity}</span>
+  <button onclick="changeQty('${i.id}', 1)">+</button>
+</td>
         <td class="right">€ ${i.purchase_price}</td>
         <td class="right editable" data-id="${i.id}" data-value="${i.current_price}">
           € ${i.current_price}
@@ -305,6 +309,28 @@ async function sellItem(id){
 
 async function deleteItem(id){
   await fetch('/api/delete-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
+  loadData()
+}
+  async function changeQty(id, delta){
+
+  const item = allItems.find(i => i.id === id)
+  if(!item) return
+
+  const newQty = item.quantity + delta
+  if(newQty < 1) return
+
+  await fetch('/api/update-item',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      id: id,
+      quantity: newQty,
+      purchase_price: item.purchase_price,
+      current_price: item.current_price,
+      product_type: item.product_type
+    })
+  })
+
   loadData()
 }
 
