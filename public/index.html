@@ -18,20 +18,20 @@
 
     h1 {
       font-family: 'Playfair Display', serif;
-      font-size: 36px;
+      font-size: 34px;
       letter-spacing: 2px;
       margin-bottom: 40px;
       color: #d4af37;
     }
 
     .hero-number {
-      font-size: 56px;
+      font-size: 54px;
       font-weight: 700;
     }
 
     .roi {
-      font-size: 20px;
-      margin-top: 10px;
+      font-size: 18px;
+      margin-top: 8px;
     }
 
     .green { color: #4ade80; }
@@ -48,7 +48,7 @@
     }
 
     canvas {
-      max-height: 180px !important;
+      max-height: 160px !important;
     }
 
     table {
@@ -60,6 +60,18 @@
     th, td {
       padding: 12px;
       border-bottom: 1px solid #333;
+    }
+
+    th {
+      font-size: 12px;
+      text-transform: uppercase;
+      color: #888;
+      letter-spacing: 1px;
+    }
+
+    td.editable {
+      cursor: pointer;
+      border-bottom: 1px dashed #666;
     }
 
     input, select {
@@ -115,11 +127,8 @@
     <input id="quantity" type="number" value="1" required />
     <input id="purchase_price" type="number" placeholder="Purchase €" required />
     <input id="current_price" type="number" placeholder="Current €" required />
-
-    <!-- Product Type vrij invoerbaar -->
-    <input id="product_type" list="productList" placeholder="Product Type (Booster Box, ETB, Case...)" />
+    <input id="product_type" list="productList" placeholder="Product Type" />
     <datalist id="productList"></datalist>
-
     <button>Add</button>
   </form>
 </div>
@@ -128,16 +137,16 @@
   <h3>Portfolio Table</h3>
   <table>
     <thead>
-  <tr>
-    <th style="text-align:left;">Asset</th>
-    <th style="text-align:left;">Type</th>
-    <th style="text-align:center;">Qty</th>
-    <th style="text-align:right;">Investment</th>
-    <th style="text-align:right;">Current</th>
-    <th style="text-align:right;">Profit</th>
-    <th style="text-align:center;">Delete</th>
-  </tr>
-</thead>
+      <tr>
+        <th style="text-align:left;">Asset</th>
+        <th style="text-align:left;">Type</th>
+        <th style="text-align:center;">Qty</th>
+        <th style="text-align:right;">Investment</th>
+        <th style="text-align:right;">Current</th>
+        <th style="text-align:right;">Profit</th>
+        <th style="text-align:center;">Delete</th>
+      </tr>
+    </thead>
     <tbody id="itemsBody"></tbody>
   </table>
 </div>
@@ -156,7 +165,6 @@ async function loadData(){
 }
 
 function populateProductTypes(){
-
   const types = [...new Set(allItems.map(i => i.product_type).filter(Boolean))]
 
   const filterSelect = document.getElementById("filterType")
@@ -173,7 +181,6 @@ function populateProductTypes(){
 
 function applyFilter(){
   const selected = document.getElementById("filterType").value
-
   let filtered = allItems
 
   if(selected !== "all"){
@@ -220,20 +227,55 @@ function renderTable(items){
 
   items.forEach(i=>{
     const profit=(i.current_price-i.purchase_price)*i.quantity
+
     tbody.innerHTML+=`
       <tr>
-        <td>${i.name}</td>
-        <td>${i.product_type||""}</td>
-        <td>€ ${i.purchase_price}</td>
-        <td>€ ${i.current_price}</td>
-        <td class="${profit>=0?'green':'red'}">
+        <td style="text-align:left;">${i.name}</td>
+        <td style="text-align:left;">${i.product_type||""}</td>
+        <td style="text-align:center;">${i.quantity}</td>
+        <td style="text-align:right;">€ ${i.purchase_price}</td>
+        <td style="text-align:right;" class="editable" data-id="${i.id}">
+          € ${i.current_price}
+        </td>
+        <td style="text-align:right;" class="${profit>=0?'green':'red'}">
           € ${profit.toLocaleString()}
         </td>
-        <td>
+        <td style="text-align:center;">
           <button onclick="deleteItem('${i.id}')">❌</button>
         </td>
       </tr>
     `
+  })
+
+  enableInlineEdit()
+}
+
+function enableInlineEdit(){
+  document.querySelectorAll(".editable").forEach(cell=>{
+    cell.onclick = function(){
+      const id = this.dataset.id
+      const oldValue = this.innerText.replace("€","").trim()
+
+      this.innerHTML = `<input type="number" value="${oldValue}" style="width:80px;">`
+      const input = this.querySelector("input")
+      input.focus()
+
+      input.onblur = async ()=>{
+        const newValue = Number(input.value)
+
+        await fetch('/api/update-item',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            id: id,
+            field: 'current_price',
+            value: newValue
+          })
+        })
+
+        loadData()
+      }
+    }
   })
 }
 
