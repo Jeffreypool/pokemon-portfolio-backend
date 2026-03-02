@@ -278,29 +278,109 @@ function renderTables(active,sold){
   })
 }
 
-function renderCharts(active,sold){
-  const invest=active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
-  const current=active.reduce((s,i)=>s+i.current_price*i.quantity,0)
+function renderCharts(active, sold){
+
+  // -----------------------
+  // BAR CHART (Active Only)
+  // -----------------------
+
+  const investActive = active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
+  const currentActive = active.reduce((s,i)=>s+i.current_price*i.quantity,0)
 
   if(barChart) barChart.destroy()
-  barChart=new Chart(document.getElementById("barChart"),{
+
+  barChart = new Chart(document.getElementById("barChart"),{
     type:"bar",
     data:{
-      labels:["Investment","Current"],
-      datasets:[{data:[invest,current],backgroundColor:["#444","#d4af37"]}]
+      labels:["Investment","Current Value"],
+      datasets:[{
+        data:[investActive,currentActive],
+        backgroundColor:["#444","#d4af37"]
+      }]
     },
     options:{plugins:{legend:{display:false}}}
   })
 
-  const dates=allItems.map(i=>new Date(i.purchase_date))
-  const values=allItems.map(i=>i.current_price*i.quantity)
+
+  // -----------------------
+  // TIMELINE (CUMULATIVE)
+  // -----------------------
+
+  const events = []
+
+  allItems.forEach(item => {
+
+    const invest = item.purchase_price * item.quantity
+
+    if(item.purchase_date){
+      events.push({
+        date: new Date(item.purchase_date),
+        valueChange: invest,
+        profitChange: -invest
+      })
+    }
+
+    if(item.sold && item.sold_date){
+      const realized = (item.sold_price - item.purchase_price) * item.quantity
+
+      events.push({
+        date: new Date(item.sold_date),
+        valueChange: -invest,
+        profitChange: realized
+      })
+    }
+
+  })
+
+  events.sort((a,b)=>a.date - b.date)
+
+  let cumulativeValue = 0
+  let cumulativeProfit = 0
+
+  const labels = []
+  const valueData = []
+  const profitData = []
+
+  events.forEach(e=>{
+    cumulativeValue += e.valueChange
+    cumulativeProfit += e.profitChange
+
+    labels.push(e.date.toISOString().split("T")[0])
+    valueData.push(cumulativeValue)
+    profitData.push(cumulativeProfit)
+  })
 
   if(lineChart) lineChart.destroy()
-  lineChart=new Chart(document.getElementById("lineChart"),{
+
+  lineChart = new Chart(document.getElementById("lineChart"),{
     type:"line",
     data:{
-      labels:dates.map(d=>d.toISOString().split("T")[0]),
-      datasets:[{data:values,borderColor:"#4ade80",tension:0.3}]
+      labels: labels,
+      datasets:[
+        {
+          label:"Portfolio Value",
+          data:valueData,
+          borderColor:"#d4af37",
+          tension:0.3
+        },
+        {
+          label:"Cumulative Profit",
+          data:profitData,
+          borderColor:"#4ade80",
+          tension:0.3
+        }
+      ]
+    },
+    options:{
+      plugins:{
+        legend:{
+          labels:{ color:"#aaa" }
+        }
+      },
+      scales:{
+        x:{ ticks:{ color:"#777" }},
+        y:{ ticks:{ color:"#777" }}
+      }
     }
   })
 }
