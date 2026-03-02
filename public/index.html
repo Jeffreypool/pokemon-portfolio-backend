@@ -18,7 +18,7 @@
 
     h1 {
       font-family: 'Playfair Display', serif;
-      font-size: 34px;
+      font-size: 32px;
       letter-spacing: 2px;
       margin-bottom: 40px;
       color: #d4af37;
@@ -26,31 +26,31 @@
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px,1fr));
+      grid-template-columns: repeat(auto-fit, minmax(240px,1fr));
       gap: 20px;
       margin-bottom: 40px;
     }
 
     .stat-card {
       background: rgba(255,255,255,0.05);
-      backdrop-filter: blur(10px);
       padding: 20px;
-      border-radius: 16px;
+      border-radius: 14px;
     }
 
-    .stat-title { font-size: 14px; opacity: 0.6; }
-    .stat-value { font-size: 28px; font-weight: 700; margin-top: 6px; }
+    .stat-title { font-size: 13px; opacity: 0.6; }
+    .stat-value { font-size: 24px; font-weight: 700; margin-top: 6px; }
 
     .green { color: #4ade80; }
     .red { color: #f87171; }
 
     .card {
       background: rgba(255,255,255,0.05);
-      backdrop-filter: blur(10px);
       padding: 20px;
-      border-radius: 16px;
+      border-radius: 14px;
       margin-bottom: 25px;
     }
+
+    canvas { max-height: 180px !important; }
 
     table {
       width: 100%;
@@ -59,7 +59,7 @@
     }
 
     th, td {
-      padding: 12px;
+      padding: 10px;
       border-bottom: 1px solid #333;
     }
 
@@ -69,13 +69,13 @@
       user-select: none;
     }
 
-    th.active-sort { color: #d4af37; }
+    th span { font-size: 10px; margin-left: 4px; }
 
     .right { text-align: right; }
     .center { text-align: center; }
 
     input, select {
-      padding: 6px 10px;
+      padding: 6px 8px;
       background: #111;
       color: white;
       border: 1px solid #333;
@@ -85,8 +85,8 @@
     }
 
     button {
-      padding: 6px 12px;
-      border-radius: 8px;
+      padding: 6px 10px;
+      border-radius: 6px;
       border: none;
       cursor: pointer;
       background: #d4af37;
@@ -121,7 +121,7 @@
 </div>
 
 <div class="card">
-  <canvas id="timelineChart"></canvas>
+  <canvas id="lineChart"></canvas>
 </div>
 
 <div class="card">
@@ -133,7 +133,10 @@
     <input id="quantity" type="number" value="1" required />
     <input id="purchase_price" type="number" placeholder="Purchase €" required />
     <input id="current_price" type="number" placeholder="Current €" required />
-    <input id="product_type" placeholder="Product Type" />
+
+    <input list="productList" id="product_type" placeholder="Product Type" />
+    <datalist id="productList"></datalist>
+
     <button>Add</button>
   </form>
 </div>
@@ -150,13 +153,13 @@
   <table>
     <thead>
       <tr>
-        <th onclick="sortBy('name', this)">Asset</th>
-        <th onclick="sortBy('product_type', this)">Type</th>
-        <th onclick="sortBy('quantity', this)" class="center">Qty</th>
-        <th onclick="sortBy('purchase_price', this)" class="right">Investment</th>
-        <th onclick="sortBy('current_price', this)" class="right">Current</th>
-        <th onclick="sortBy('profit', this)" class="right">Profit</th>
-        <th onclick="sortBy('roi', this)" class="right">ROI</th>
+        <th onclick="sortBy('name')">Asset<span id="nameArrow"></span></th>
+        <th onclick="sortBy('product_type')">Type<span id="product_typeArrow"></span></th>
+        <th class="center" onclick="sortBy('quantity')">Qty<span id="quantityArrow"></span></th>
+        <th class="right" onclick="sortBy('purchase_price')">Investment<span id="purchase_priceArrow"></span></th>
+        <th class="right" onclick="sortBy('current_price')">Current<span id="current_priceArrow"></span></th>
+        <th class="right" onclick="sortBy('profit')">Profit<span id="profitArrow"></span></th>
+        <th class="right" onclick="sortBy('roi')">ROI<span id="roiArrow"></span></th>
         <th class="center">Sell</th>
         <th class="center">Delete</th>
       </tr>
@@ -184,7 +187,7 @@
 <script>
 
 let allItems = []
-let barChart, timelineChart
+let barChart, lineChart
 let currentSort = null
 let sortDirection = 1
 
@@ -192,63 +195,58 @@ async function loadData(){
   const res = await fetch('/api/dashboard')
   const data = await res.json()
   allItems = data.items
-  populateFilter()
+  populateProductTypes()
   render()
 }
 
-function populateFilter(){
+function populateProductTypes(){
   const types = [...new Set(allItems.map(i => i.product_type).filter(Boolean))]
-  const select = document.getElementById("filterType")
-  select.innerHTML = '<option value="all">All</option>'
-  types.forEach(t => {
-    select.innerHTML += `<option value="${t}">${t}</option>`
+  const filter = document.getElementById("filterType")
+  const list = document.getElementById("productList")
+
+  filter.innerHTML = '<option value="all">All</option>'
+  list.innerHTML = ""
+
+  types.forEach(t=>{
+    filter.innerHTML += `<option value="${t}">${t}</option>`
+    list.innerHTML += `<option value="${t}">`
   })
 }
 
 function render(){
-
   const filter = document.getElementById("filterType").value
-  let items = allItems
+  let items = filter === "all"
+    ? allItems
+    : allItems.filter(i=>i.product_type===filter)
 
-  if(filter !== "all"){
-    items = items.filter(i => i.product_type === filter)
-  }
+  const active = items.filter(i=>!i.sold)
+  const sold = allItems.filter(i=>i.sold)
 
-  const active = items.filter(i => !i.sold)
-  const sold = allItems.filter(i => i.sold)
-
-  renderStats(active, sold)
-  renderTables(active, sold)
-  renderCharts(active)
+  renderStats(active,sold)
+  renderTables(active,sold)
+  renderCharts(active,sold)
 }
 
-function renderStats(active, sold){
-
+function renderStats(active,sold){
   const invest = active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
   const current = active.reduce((s,i)=>s+i.current_price*i.quantity,0)
-  const unrealized = current - invest
+  const unrealized = current-invest
+  const realized = sold.reduce((s,i)=>s+((i.sold_price-i.purchase_price)*i.quantity),0)
 
-  const realized = sold.reduce((s,i)=>{
-    return s + ((i.sold_price - i.purchase_price) * i.quantity)
-  },0)
-
-  document.getElementById("activeValue").innerHTML = "€ " + current.toLocaleString()
-  document.getElementById("unrealizedProfit").innerHTML =
-    `<span class="${unrealized>=0?'green':'red'}">€ ${unrealized.toLocaleString()}</span>`
-  document.getElementById("realizedProfit").innerHTML =
-    `<span class="${realized>=0?'green':'red'}">€ ${realized.toLocaleString()}</span>`
+  document.getElementById("activeValue").innerHTML="€ "+current.toLocaleString()
+  document.getElementById("unrealizedProfit").innerHTML=`<span class="${unrealized>=0?'green':'red'}">€ ${unrealized.toLocaleString()}</span>`
+  document.getElementById("realizedProfit").innerHTML=`<span class="${realized>=0?'green':'red'}">€ ${realized.toLocaleString()}</span>`
 }
 
-function renderTables(active, sold){
-
-  const activeBody = document.getElementById("activeBody")
-  activeBody.innerHTML = ""
+function renderTables(active,sold){
+  const body=document.getElementById("activeBody")
+  body.innerHTML=""
 
   active.forEach(i=>{
-    const profit = (i.current_price-i.purchase_price)*i.quantity
-    const roi = ((profit/(i.purchase_price*i.quantity))*100).toFixed(1)
+    const profit=(i.current_price-i.purchase_price)*i.quantity
+    const roi=((profit/(i.purchase_price*i.quantity))*100).toFixed(1)
 
-    activeBody.innerHTML += `
+    body.innerHTML+=`
       <tr>
         <td>${i.name}</td>
         <td>${i.product_type||""}</td>
@@ -263,126 +261,102 @@ function renderTables(active, sold){
     `
   })
 
-  const soldBody = document.getElementById("soldBody")
-  soldBody.innerHTML = ""
+  const soldBody=document.getElementById("soldBody")
+  soldBody.innerHTML=""
 
   sold.forEach(i=>{
-    const realized = (i.sold_price-i.purchase_price)*i.quantity
-
-    soldBody.innerHTML += `
+    const realized=(i.sold_price-i.purchase_price)*i.quantity
+    soldBody.innerHTML+=`
       <tr>
         <td>${i.name}</td>
         <td class="right">€ ${i.sold_price}</td>
         <td class="right">€ ${i.purchase_price}</td>
         <td class="right ${realized>=0?'green':'red'}">€ ${realized.toLocaleString()}</td>
-        <td>${i.sold_date ? i.sold_date.split("T")[0] : ""}</td>
+        <td>${i.sold_date?i.sold_date.split("T")[0]:""}</td>
       </tr>
     `
   })
 }
 
-function renderCharts(active){
-
-  const invest = active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
-  const current = active.reduce((s,i)=>s+i.current_price*i.quantity,0)
+function renderCharts(active,sold){
+  const invest=active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
+  const current=active.reduce((s,i)=>s+i.current_price*i.quantity,0)
 
   if(barChart) barChart.destroy()
-
-  barChart = new Chart(document.getElementById("barChart"),{
+  barChart=new Chart(document.getElementById("barChart"),{
     type:"bar",
     data:{
-      labels:["Investment","Current Value"],
-      datasets:[{
-        data:[invest,current],
-        backgroundColor:["#444","#d4af37"],
-        borderRadius:8
-      }]
+      labels:["Investment","Current"],
+      datasets:[{data:[invest,current],backgroundColor:["#444","#d4af37"]}]
     },
     options:{plugins:{legend:{display:false}}}
   })
+
+  const dates=allItems.map(i=>new Date(i.purchase_date))
+  const values=allItems.map(i=>i.current_price*i.quantity)
+
+  if(lineChart) lineChart.destroy()
+  lineChart=new Chart(document.getElementById("lineChart"),{
+    type:"line",
+    data:{
+      labels:dates.map(d=>d.toISOString().split("T")[0]),
+      datasets:[{data:values,borderColor:"#4ade80",tension:0.3}]
+    }
+  })
 }
 
-function sortBy(field, element){
-
-  if(currentSort === field){
-    sortDirection *= -1
-  } else {
-    currentSort = field
-    sortDirection = 1
-  }
+function sortBy(field){
+  sortDirection = currentSort===field ? -sortDirection : 1
+  currentSort=field
 
   allItems.sort((a,b)=>{
-
-    if(field === 'profit'){
-      const profitA = (a.current_price-a.purchase_price)*a.quantity
-      const profitB = (b.current_price-b.purchase_price)*b.quantity
-      return (profitA - profitB) * sortDirection
+    if(field==="profit"){
+      return ((a.current_price-a.purchase_price)-(b.current_price-b.purchase_price))*sortDirection
     }
-
-    if(field === 'roi'){
-      const roiA = ((a.current_price-a.purchase_price)/a.purchase_price)
-      const roiB = ((b.current_price-b.purchase_price)/b.purchase_price)
-      return (roiA - roiB) * sortDirection
+    if(field==="roi"){
+      const roiA=(a.current_price-a.purchase_price)/a.purchase_price
+      const roiB=(b.current_price-b.purchase_price)/b.purchase_price
+      return (roiA-roiB)*sortDirection
     }
-
-    if(a[field] < b[field]) return -1 * sortDirection
-    if(a[field] > b[field]) return 1 * sortDirection
-    return 0
+    return (a[field]>b[field]?1:-1)*sortDirection
   })
+
+  document.querySelectorAll("th span").forEach(s=>s.innerHTML="")
+  document.getElementById(field+"Arrow").innerHTML = sortDirection===1?"⬆":"⬇"
 
   render()
 }
 
 async function sellItem(id){
-  const soldPrice = prompt("Enter selling price:")
+  const soldPrice=prompt("Enter selling price:")
   if(!soldPrice) return
-
-  await fetch('/api/sell-item',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      id:id,
-      sold_price:Number(soldPrice)
-    })
-  })
-
+  await fetch('/api/sell-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,sold_price:Number(soldPrice)})})
   loadData()
 }
 
 async function deleteItem(id){
-  await fetch('/api/delete-item',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({id})
-  })
+  await fetch('/api/delete-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
   loadData()
 }
 
 document.getElementById("itemForm").addEventListener("submit",async e=>{
   e.preventDefault()
-
-  const body = {
-    name: document.getElementById("name").value,
-    set_name: document.getElementById("set").value,
-    condition: document.getElementById("condition").value,
-    quantity: Number(document.getElementById("quantity").value),
-    purchase_price: Number(document.getElementById("purchase_price").value),
-    current_price: Number(document.getElementById("current_price").value),
-    product_type: document.getElementById("product_type").value,
-    purchase_date: new Date().toISOString()
+  const body={
+    name:document.getElementById("name").value,
+    set_name:document.getElementById("set").value,
+    condition:document.getElementById("condition").value,
+    quantity:Number(document.getElementById("quantity").value),
+    purchase_price:Number(document.getElementById("purchase_price").value),
+    current_price:Number(document.getElementById("current_price").value),
+    product_type:document.getElementById("product_type").value,
+    purchase_date:new Date().toISOString()
   }
-
-  await fetch('/api/add-item',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  })
-
+  await fetch('/api/add-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
   e.target.reset()
   loadData()
 })
 
-document.getElementById("filterType").addEventListener("change", render)
+document.getElementById("filterType").addEventListener("change",render)
 
 loadData()
 
