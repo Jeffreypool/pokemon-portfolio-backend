@@ -68,7 +68,7 @@
       user-select: none;
     }
 
-    th.active-sort {
+    th:hover {
       color: #d4af37;
     }
 
@@ -100,7 +100,7 @@
 <h1>POKEMON INVESTMENT PORTFOLIO</h1>
 
 <div class="section">
-  <div>Total Portfolio Value</div>
+  <div>Total Portfolio Value (Active)</div>
   <div id="portfolioValue" class="hero-number"></div>
   <div id="roiDisplay" class="roi"></div>
 </div>
@@ -132,17 +132,18 @@
 </div>
 
 <div class="section card">
-  <h3>Portfolio Table</h3>
+  <h3>Active Portfolio</h3>
   <table>
     <thead>
       <tr>
-        <th onclick="sortBy('name', this)">Asset</th>
-        <th onclick="sortBy('product_type', this)">Type</th>
-        <th onclick="sortBy('quantity', this)">Qty</th>
-        <th onclick="sortBy('purchase_price', this)">Investment</th>
-        <th onclick="sortBy('current_price', this)">Current</th>
-        <th onclick="sortBy('profit', this)">Profit</th>
-        <th onclick="sortBy('roi', this)">ROI %</th>
+        <th>Asset</th>
+        <th>Type</th>
+        <th>Qty</th>
+        <th>Investment</th>
+        <th>Current</th>
+        <th>Profit</th>
+        <th>ROI %</th>
+        <th>Sell</th>
         <th>Delete</th>
       </tr>
     </thead>
@@ -154,13 +155,11 @@
 
 let allItems = []
 let valueChart
-let currentSort = null
-let sortDirection = 1
 
 async function loadData(){
   const res = await fetch('/api/dashboard')
   const data = await res.json()
-  allItems = data.items
+  allItems = data.items.filter(i => !i.sold) // alleen actieve items
   populateProductTypes()
   applyFilter()
 }
@@ -181,49 +180,6 @@ function applyFilter(){
     filtered = allItems.filter(i => i.product_type === selected)
   }
   render(filtered)
-}
-
-function clearSortIndicators(){
-  document.querySelectorAll("th").forEach(th=>{
-    th.classList.remove("active-sort")
-    th.innerText = th.innerText.replace(" ↑","").replace(" ↓","")
-  })
-}
-
-function sortBy(field, element){
-
-  if(currentSort === field){
-    sortDirection *= -1
-  } else {
-    currentSort = field
-    sortDirection = 1
-  }
-
-  allItems.sort((a,b)=>{
-
-    if(field === 'profit'){
-      const profitA = (a.current_price - a.purchase_price) * a.quantity
-      const profitB = (b.current_price - b.purchase_price) * b.quantity
-      return (profitA - profitB) * sortDirection
-    }
-
-    if(field === 'roi'){
-      const roiA = ((a.current_price - a.purchase_price) / a.purchase_price)
-      const roiB = ((b.current_price - b.purchase_price) / b.purchase_price)
-      return (roiA - roiB) * sortDirection
-    }
-
-    if(a[field] < b[field]) return -1 * sortDirection
-    if(a[field] > b[field]) return 1 * sortDirection
-    return 0
-  })
-
-  clearSortIndicators()
-
-  element.classList.add("active-sort")
-  element.innerText += sortDirection === 1 ? " ↑" : " ↓"
-
-  applyFilter()
 }
 
 function render(items){
@@ -277,11 +233,30 @@ function renderTable(items){
         </td>
         <td style="text-align:right;">${roi}%</td>
         <td style="text-align:center;">
+          <button onclick="sellItem('${i.id}')">💰</button>
+        </td>
+        <td style="text-align:center;">
           <button onclick="deleteItem('${i.id}')">❌</button>
         </td>
       </tr>
     `
   })
+}
+
+async function sellItem(id){
+  const soldPrice = prompt("Enter selling price:")
+  if(!soldPrice) return
+
+  await fetch('/api/sell-item',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      id: id,
+      sold_price: Number(soldPrice)
+    })
+  })
+
+  loadData()
 }
 
 async function deleteItem(id){
