@@ -205,26 +205,29 @@ function renderTables(active,sold){
   body.innerHTML=""
 
   active.forEach(i=>{
-    const profit=(i.current_price-i.purchase_price)*i.quantity
+   const totalInvest = i.purchase_price * i.quantity
+const totalCurrent = i.current_price * i.quantity
+const profit = totalCurrent - totalInvest
 
-    body.innerHTML+=`
-      <tr>
-        <td>${i.name}</td>
-        <td class="center">
-  <button onclick="changeQty('${i.id}', -1)">−</button>
-  <span style="margin:0 8px;">${i.quantity}</span>
-  <button onclick="changeQty('${i.id}', 1)">+</button>
-</td>
-        <td class="right">€ ${i.purchase_price}</td>
-        <td class="right editable" data-id="${i.id}" data-value="${i.current_price}">
-          € ${i.current_price}
-        </td>
-        <td class="right ${profit>=0?'green':'red'}">
-          € ${profit.toLocaleString()}
-        </td>
-        <td class="center"><button onclick="sellItem('${i.id}')">💰</button></td>
-        <td class="center"><button onclick="deleteItem('${i.id}')">❌</button></td>
-      </tr>
+body.innerHTML += `
+  <tr>
+    <td>${i.name}</td>
+    <td class="center">
+      <button onclick="changeQty('${i.id}', -1)">−</button>
+      <span style="margin:0 8px;">${i.quantity}</span>
+      <button onclick="changeQty('${i.id}', 1)">+</button>
+    </td>
+    <td class="right">€ ${totalInvest.toLocaleString()}</td>
+    <td class="right editable" data-id="${i.id}" data-value="${i.current_price}">
+      € ${totalCurrent.toLocaleString()}
+    </td>
+    <td class="right ${profit>=0?'green':'red'}">
+      € ${profit.toLocaleString()}
+    </td>
+    <td class="center"><button onclick="sellItem('${i.id}')">💰</button></td>
+    <td class="center"><button onclick="deleteItem('${i.id}')">❌</button></td>
+  </tr>
+`
     `
   })
 
