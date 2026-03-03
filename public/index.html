@@ -76,10 +76,24 @@
 <h1>POKEMON INVESTMENT PORTFOLIO</h1>
 
 <div class="card">
-  <div style="font-size:13px; opacity:0.6;">Total Portfolio Value</div>
-  <div id="totalValue" style="font-size:32px; margin-top:6px;"></div>
-  <div id="totalProfit"></div>
-  <div id="totalROI"></div>
+  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+
+    <div>
+      <div style="font-size:13px; opacity:0.6;">Active Portfolio Value</div>
+      <div id="totalValue" style="font-size:32px; margin-top:6px;"></div>
+    </div>
+
+    <div style="text-align:right;">
+      <div style="font-size:13px; opacity:0.6;">Total Sold Value</div>
+      <div id="totalSoldValue" style="font-size:24px; margin-top:6px;"></div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:18px;">
+    <div id="totalProfit"></div>
+    <div id="totalROI"></div>
+  </div>
 </div>
 
 <div class="card">
@@ -201,6 +215,8 @@ function renderStats(active,sold){
   const totalProfit = unrealized + realized
   const totalROI = invest>0 ? ((totalProfit/invest)*100).toFixed(2) : 0
 
+  document.getElementById("totalSoldValue").innerHTML =
+  "€ " + totalSoldValue.toLocaleString()
   document.getElementById("totalValue").innerHTML = "€ "+current.toLocaleString()
   document.getElementById("totalProfit").innerHTML =
     `<span class="${totalProfit>=0?'green':'red'}">€ ${totalProfit.toLocaleString()}</span>`
