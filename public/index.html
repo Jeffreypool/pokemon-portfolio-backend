@@ -4,6 +4,7 @@
   <title>Pokemon Investment Portfolio</title>
   <meta charset="UTF-8" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
 
   <style>
     body {
@@ -74,6 +75,10 @@
 <body>
 
 <h1>POKEMON INVESTMENT PORTFOLIO</h1>
+
+  <div class="card">
+  <button onclick="exportToExcel()">Export Full Portfolio to Excel</button>
+</div>
 
   <div class="card">
   <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -495,58 +500,109 @@ loadData()
   link.click()
 }
 
-function exportActive(){
+async function exportToExcel(){
+
+  const workbook = new ExcelJS.Workbook()
+  workbook.creator = "Pokemon Portfolio"
+  workbook.created = new Date()
+
+  // -------------------
+  // ACTIVE SHEET
+  // -------------------
+
+  const activeSheet = workbook.addWorksheet("Active Portfolio")
+
+  activeSheet.columns = [
+    { header: "Asset", key: "name", width: 25 },
+    { header: "Qty", key: "qty", width: 8 },
+    { header: "Investment (€)", key: "invest", width: 18 },
+    { header: "Current Value (€)", key: "current", width: 20 },
+    { header: "Profit (€)", key: "profit", width: 18 },
+    { header: "ROI (%)", key: "roi", width: 12 }
+  ]
 
   const active = allItems.filter(i=>!i.sold)
-
-  const rows = [
-    ["Asset","Qty","Investment","Current","Profit","ROI %"]
-  ]
 
   active.forEach(i=>{
     const invest = i.purchase_price * i.quantity
     const current = i.current_price * i.quantity
     const profit = current - invest
-    const roi = invest>0 ? ((profit/invest)*100).toFixed(2) : 0
+    const roi = invest>0 ? (profit/invest) : 0
 
-    rows.push([
-      i.name,
-      i.quantity,
-      invest,
-      current,
-      profit,
-      roi
-    ])
+    activeSheet.addRow({
+      name: i.name,
+      qty: i.quantity,
+      invest: invest,
+      current: current,
+      profit: profit,
+      roi: roi
+    })
   })
 
-  downloadCSV("active_portfolio.csv", rows)
-}
+  // Format currency & percentage
+  activeSheet.getColumn("invest").numFmt = '"€"#,##0.00'
+  activeSheet.getColumn("current").numFmt = '"€"#,##0.00'
+  activeSheet.getColumn("profit").numFmt = '"€"#,##0.00'
+  activeSheet.getColumn("roi").numFmt = '0.00%'
 
-function exportSold(){
+  activeSheet.getRow(1).font = { bold: true }
+
+  // -------------------
+  // SOLD SHEET
+  // -------------------
+
+  const soldSheet = workbook.addWorksheet("Sold Items")
+
+  soldSheet.columns = [
+    { header: "Asset", key: "name", width: 25 },
+    { header: "Qty", key: "qty", width: 8 },
+    { header: "Investment (€)", key: "invest", width: 18 },
+    { header: "Sold Value (€)", key: "soldValue", width: 20 },
+    { header: "Realized Profit (€)", key: "profit", width: 20 },
+    { header: "ROI (%)", key: "roi", width: 12 },
+    { header: "Sold Date", key: "date", width: 15 }
+  ]
 
   const sold = allItems.filter(i=>i.sold)
 
-  const rows = [
-    ["Asset","Qty","Investment","Sold Price","Realized Profit","ROI %","Date"]
-  ]
-
   sold.forEach(i=>{
     const invest = i.purchase_price * i.quantity
-    const realized = (i.sold_price - i.purchase_price) * i.quantity
-    const roi = invest>0 ? ((realized/invest)*100).toFixed(2) : 0
+    const soldValue = i.sold_price * i.quantity
+    const profit = soldValue - invest
+    const roi = invest>0 ? (profit/invest) : 0
 
-    rows.push([
-      i.name,
-      i.quantity,
-      invest,
-      i.sold_price * i.quantity,
-      realized,
-      roi,
-      i.sold_date ? i.sold_date.split("T")[0] : ""
-    ])
+    soldSheet.addRow({
+      name: i.name,
+      qty: i.quantity,
+      invest: invest,
+      soldValue: soldValue,
+      profit: profit,
+      roi: roi,
+      date: i.sold_date ? i.sold_date.split("T")[0] : ""
+    })
   })
 
-  downloadCSV("sold_items.csv", rows)
+  soldSheet.getColumn("invest").numFmt = '"€"#,##0.00'
+  soldSheet.getColumn("soldValue").numFmt = '"€"#,##0.00'
+  soldSheet.getColumn("profit").numFmt = '"€"#,##0.00'
+  soldSheet.getColumn("roi").numFmt = '0.00%'
+
+  soldSheet.getRow(1).font = { bold: true }
+
+  // -------------------
+  // DOWNLOAD
+  // -------------------
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+
+  const link = document.createElement("a")
+  link.href = URL.createObjectURL(blob)
+
+  const today = new Date().toISOString().split("T")[0]
+  link.download = `Pokemon_Portfolio_${today}.xlsx`
+
+  link.click()
 }
 
 </script>
