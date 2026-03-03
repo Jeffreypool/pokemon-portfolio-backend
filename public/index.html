@@ -287,26 +287,63 @@ function renderBarChart(active){
 }
 
 async function loadPriceHistoryChart(){
+
   const res = await fetch('/api/price-history')
   const history = await res.json()
 
-  const grouped = {}
+  // Stap 1: sorteer chronologisch
+  history.sort((a,b)=>new Date(a.recorded_at)-new Date(b.recorded_at))
+
+  const monthly = {}
 
   history.forEach(row=>{
-    const date = row.recorded_at.split("T")[0]
-    if(!grouped[date]) grouped[date]=0
-    grouped[date]+=Number(row.market_value)
+    const date = new Date(row.recorded_at)
+    const monthKey = date.getFullYear() + "-" + String(date.getMonth()+1).padStart(2,'0')
+
+    if(!monthly[monthKey]){
+      monthly[monthKey] = {}
+    }
+
+    // Per item laatste waarde in die maand bewaren
+    monthly[monthKey][row.item_id] = Number(row.market_value)
   })
 
-  const sortedDates = Object.keys(grouped).sort()
-  const values = sortedDates.map(date=>grouped[date])
+  const months = Object.keys(monthly).sort()
+  const values = []
+
+  let lastKnownValues = {}
+
+  months.forEach(month=>{
+    // update last known per item
+    Object.keys(monthly[month]).forEach(itemId=>{
+      lastKnownValues[itemId] = monthly[month][itemId]
+    })
+
+    // totaal portfolio waarde in die maand
+    const total = Object.values(lastKnownValues).reduce((sum,v)=>sum+v,0)
+    values.push(total)
+  })
 
   if(lineChart) lineChart.destroy()
 
-  lineChart=new Chart(document.getElementById("lineChart"),{
+  lineChart = new Chart(document.getElementById("lineChart"),{
     type:"line",
-    data:{labels:sortedDates,datasets:[{data:values,borderColor:"#22c55e",tension:0.3}]},
-    options:{plugins:{legend:{display:false}}}
+    data:{
+      labels: months,
+      datasets:[{
+        label:"Portfolio Value",
+        data: values,
+        borderColor:"#22c55e",
+        tension:0.3
+      }]
+    },
+    options:{
+      plugins:{ legend:{ display:false }},
+      scales:{
+        x:{ ticks:{ color:"#888" }},
+        y:{ ticks:{ color:"#888" }}
+      }
+    }
   })
 }
 
