@@ -83,10 +83,12 @@
       <div id="totalValue" style="font-size:32px; margin-top:6px;"></div>
     </div>
 
-    <div style="text-align:right;">
-      <div style="font-size:13px; opacity:0.6;">Total Sold Value</div>
-      <div id="totalSoldValue" style="font-size:24px; margin-top:6px;"></div>
-    </div>
+   <div style="text-align:right;">
+  <div style="font-size:13px; opacity:0.6;">Total Sold Value</div>
+  <div id="totalSoldValue" style="font-size:24px; margin-top:6px;"></div>
+  <div id="realizedProfit" style="margin-top:6px;"></div>
+  <div id="realizedROI"></div>
+</div>
 
   </div>
 
@@ -215,6 +217,14 @@ function renderStats(active,sold){
   const realized = sold.reduce((s,i)=>s+((i.sold_price-i.purchase_price)*i.quantity),0)
   const totalProfit = unrealized + realized
   const totalROI = invest>0 ? ((totalProfit/invest)*100).toFixed(2) : 0
+  const soldInvest = sold.reduce(
+  (s,i)=> s + (i.purchase_price * i.quantity),
+  0
+)
+
+const realizedROI = soldInvest > 0
+  ? ((realized / soldInvest) * 100).toFixed(2)
+  : 0
 
   const totalSoldValue = sold.reduce(
     (s,i)=> s + (i.sold_price * i.quantity),
@@ -236,6 +246,16 @@ function renderStats(active,sold){
     `<span class="${totalROI>=0?'green':'red'}">
       ${totalROI}% ROI
     </span>`
+  
+  document.getElementById("realizedProfit").innerHTML =
+  `<span class="${realized>=0?'green':'red'}">
+    € ${realized.toLocaleString()}
+  </span>`
+
+document.getElementById("realizedROI").innerHTML =
+  `<span class="${realizedROI>=0?'green':'red'}">
+    ${realizedROI}% ROI
+  </span>`
 }
 
 function renderTables(active,sold){
