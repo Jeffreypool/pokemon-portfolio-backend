@@ -298,13 +298,54 @@ function renderCharts(active,sold){
     options:{plugins:{legend:{display:false}}}
   })
 
-  const dates=allItems.map(i=>new Date(i.purchase_date))
-  const values=allItems.map(i=>i.current_price*i.quantity)
+// ---------------------------
+// REAL PORTFOLIO VALUE CURVE
+// ---------------------------
+
+async function loadPriceHistoryChart(){
+
+  const res = await fetch('/api/price-history')
+  const history = await res.json()
+
+  // history is array met:
+  // item_id, market_value, recorded_at
+
+  const grouped = {}
+
+  history.forEach(row=>{
+    const date = row.recorded_at.split("T")[0]
+
+    if(!grouped[date]){
+      grouped[date] = 0
+    }
+
+    grouped[date] += Number(row.market_value)
+  })
+  loadPriceHistoryChart()
+
+  const sortedDates = Object.keys(grouped).sort()
+  const values = sortedDates.map(date => grouped[date])
 
   if(lineChart) lineChart.destroy()
-  lineChart=new Chart(document.getElementById("lineChart"),{
+
+  lineChart = new Chart(document.getElementById("lineChart"),{
     type:"line",
-    data:{labels:dates.map(d=>d.toISOString().split("T")[0]),datasets:[{data:values,borderColor:"#22c55e",tension:0.3}]}
+    data:{
+      labels: sortedDates,
+      datasets:[{
+        label:"Portfolio Value",
+        data: values,
+        borderColor:"#22c55e",
+        tension:0.3
+      }]
+    },
+    options:{
+      plugins:{ legend:{ display:false }},
+      scales:{
+        x:{ ticks:{ color:"#888" }},
+        y:{ ticks:{ color:"#888" }}
+      }
+    }
   })
 }
 
