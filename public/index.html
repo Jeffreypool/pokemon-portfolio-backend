@@ -181,11 +181,14 @@ function render(){
 
   const active = items.filter(i=>!i.sold)
 
-  // Sold blijft altijd volledige historie
-  const sold = allItems.filter(i=>i.sold)
+  // sold voor stats (gefilterd)
+  const soldFiltered = items.filter(i=>i.sold)
 
-  renderStats(active,sold)
-  renderTables(active,sold)
+  // sold voor tabel (altijd volledig)
+  const soldAll = allItems.filter(i=>i.sold)
+
+  renderStats(active, soldFiltered)
+  renderTables(active, soldAll)
   renderBarChart(active)
   loadPriceHistoryChart()
 }
