@@ -208,6 +208,7 @@ function render(){
 }
 
 function renderStats(active,sold){
+
   const invest = active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
   const current = active.reduce((s,i)=>s+i.current_price*i.quantity,0)
   const unrealized = current-invest
@@ -215,13 +216,26 @@ function renderStats(active,sold){
   const totalProfit = unrealized + realized
   const totalROI = invest>0 ? ((totalProfit/invest)*100).toFixed(2) : 0
 
+  const totalSoldValue = sold.reduce(
+    (s,i)=> s + (i.sold_price * i.quantity),
+    0
+  )
+
   document.getElementById("totalSoldValue").innerHTML =
-  "€ " + totalSoldValue.toLocaleString()
-  document.getElementById("totalValue").innerHTML = "€ "+current.toLocaleString()
+    "€ " + totalSoldValue.toLocaleString()
+
+  document.getElementById("totalValue").innerHTML =
+    "€ " + current.toLocaleString()
+
   document.getElementById("totalProfit").innerHTML =
-    `<span class="${totalProfit>=0?'green':'red'}">€ ${totalProfit.toLocaleString()}</span>`
+    `<span class="${totalProfit>=0?'green':'red'}">
+      € ${totalProfit.toLocaleString()}
+    </span>`
+
   document.getElementById("totalROI").innerHTML =
-    `<span class="${totalROI>=0?'green':'red'}">${totalROI}% ROI</span>`
+    `<span class="${totalROI>=0?'green':'red'}">
+      ${totalROI}% ROI
+    </span>`
 }
 
 function renderTables(active,sold){
