@@ -172,10 +172,16 @@ function populateTypes(){
 }
 
 function render(){
+
   const filter = document.getElementById("filterType").value
-  const items = filter==="all" ? allItems : allItems.filter(i=>i.product_type===filter)
+
+  const items = filter==="all"
+    ? allItems
+    : allItems.filter(i=>i.product_type===filter)
 
   const active = items.filter(i=>!i.sold)
+
+  // Sold blijft altijd volledige historie
   const sold = allItems.filter(i=>i.sold)
 
   renderStats(active,sold)
