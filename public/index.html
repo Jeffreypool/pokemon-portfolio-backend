@@ -28,9 +28,6 @@
       margin-bottom: 25px;
     }
 
-    .right { text-align: right; }
-    .center { text-align: center; }
-
     table {
       width: 100%;
       border-collapse: collapse;
@@ -43,6 +40,9 @@
     }
 
     th { color: #9ca3af; cursor: pointer; }
+
+    .right { text-align: right; }
+    .center { text-align: center; }
 
     input, select {
       padding: 6px 8px;
@@ -66,9 +66,6 @@
 
     .green { color: #22c55e; }
     .red { color: #ef4444; }
-    td div:first-child {
-  font-weight: 500;
-}
 
     canvas { max-height: 170px !important; }
   </style>
@@ -81,7 +78,7 @@
 <div class="card">
   <div style="font-size:13px; opacity:0.6;">Total Portfolio Value</div>
   <div id="totalValue" style="font-size:32px; margin-top:6px;"></div>
-  <div id="totalProfit" style="margin-top:8px;"></div>
+  <div id="totalProfit"></div>
   <div id="totalROI"></div>
 </div>
 
@@ -118,10 +115,10 @@
   <table>
     <thead>
       <tr>
-        <th onclick="sortBy('name')">Asset</th>
-        <th class="center" onclick="sortBy('quantity')">Qty</th>
-        <th class="right" onclick="sortBy('purchase_price')">Investment</th>
-        <th class="right" onclick="sortBy('current_price')">Current</th>
+        <th>Asset</th>
+        <th class="center">Qty</th>
+        <th class="right">Investment</th>
+        <th class="right">Current</th>
         <th class="right">Profit</th>
         <th class="center">Sell</th>
         <th class="center">Delete</th>
@@ -151,8 +148,6 @@
 
 let allItems = []
 let barChart, lineChart
-let currentSort = null
-let sortDirection = 1
 
 async function loadData(){
   const res = await fetch('/api/dashboard')
@@ -185,7 +180,8 @@ function render(){
 
   renderStats(active,sold)
   renderTables(active,sold)
-  renderCharts(active,sold)
+  renderBarChart(active)
+  loadPriceHistoryChart()
 }
 
 function renderStats(active,sold){
@@ -208,39 +204,29 @@ function renderTables(active,sold){
   body.innerHTML=""
 
   active.forEach(i=>{
-   const totalInvest = i.purchase_price * i.quantity
-const totalCurrent = i.current_price * i.quantity
-const profit = totalCurrent - totalInvest
+    const totalInvest = i.purchase_price * i.quantity
+    const totalCurrent = i.current_price * i.quantity
+    const profit = totalCurrent - totalInvest
 
-body.innerHTML += `
-  <tr>
-    <td>${i.name}</td>
-    <td class="center">
-      <button onclick="changeQty('${i.id}', -1)">−</button>
-      <span style="margin:0 8px;">${i.quantity}</span>
-      <button onclick="changeQty('${i.id}', 1)">+</button>
-    </td>
-    <td class="right">
-  <div>€ ${totalInvest.toLocaleString()}</div>
-  <div style="font-size:11px; opacity:0.5;">
-    € ${i.purchase_price.toLocaleString()} per stuk
-  </div>
-</td>
-
-<td class="right editable" data-id="${i.id}" data-value="${i.current_price}">
-  <div>€ ${totalCurrent.toLocaleString()}</div>
-  <div style="font-size:11px; opacity:0.5;">
-    € ${i.current_price.toLocaleString()} per stuk
-  </div>
-</td>
-    <td class="right ${profit>=0?'green':'red'}">
-      € ${profit.toLocaleString()}
-    </td>
-    <td class="center"><button onclick="sellItem('${i.id}')">💰</button></td>
-    <td class="center"><button onclick="deleteItem('${i.id}')">❌</button></td>
-  </tr>
-`
-    
+    body.innerHTML += `
+      <tr>
+        <td>${i.name}</td>
+        <td class="center">
+          <button onclick="changeQty('${i.id}', -1)">−</button>
+          <span style="margin:0 8px;">${i.quantity}</span>
+          <button onclick="changeQty('${i.id}', 1)">+</button>
+        </td>
+        <td class="right">€ ${totalInvest.toLocaleString()}</td>
+        <td class="right editable" data-id="${i.id}" data-value="${i.current_price}">
+          € ${totalCurrent.toLocaleString()}
+        </td>
+        <td class="right ${profit>=0?'green':'red'}">
+          € ${profit.toLocaleString()}
+        </td>
+        <td class="center"><button onclick="sellItem('${i.id}')">💰</button></td>
+        <td class="center"><button onclick="deleteItem('${i.id}')">❌</button></td>
+      </tr>
+    `
   })
 
   enableInlineEdit()
@@ -287,106 +273,80 @@ function enableInlineEdit(){
   })
 }
 
-function renderCharts(active,sold){
+function renderBarChart(active){
   const invest=active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
   const current=active.reduce((s,i)=>s+i.current_price*i.quantity,0)
 
   if(barChart) barChart.destroy()
+
   barChart=new Chart(document.getElementById("barChart"),{
     type:"bar",
     data:{labels:["Investment","Current"],datasets:[{data:[invest,current],backgroundColor:["#444","#d4af37"]}]},
     options:{plugins:{legend:{display:false}}}
   })
-
-// ---------------------------
-// REAL PORTFOLIO VALUE CURVE
-// ---------------------------
+}
 
 async function loadPriceHistoryChart(){
-
   const res = await fetch('/api/price-history')
   const history = await res.json()
-
-  // history is array met:
-  // item_id, market_value, recorded_at
 
   const grouped = {}
 
   history.forEach(row=>{
     const date = row.recorded_at.split("T")[0]
-
-    if(!grouped[date]){
-      grouped[date] = 0
-    }
-
-    grouped[date] += Number(row.market_value)
+    if(!grouped[date]) grouped[date]=0
+    grouped[date]+=Number(row.market_value)
   })
-  loadPriceHistoryChart()
 
   const sortedDates = Object.keys(grouped).sort()
-  const values = sortedDates.map(date => grouped[date])
+  const values = sortedDates.map(date=>grouped[date])
 
   if(lineChart) lineChart.destroy()
 
-  lineChart = new Chart(document.getElementById("lineChart"),{
+  lineChart=new Chart(document.getElementById("lineChart"),{
     type:"line",
-    data:{
-      labels: sortedDates,
-      datasets:[{
-        label:"Portfolio Value",
-        data: values,
-        borderColor:"#22c55e",
-        tension:0.3
-      }]
-    },
-    options:{
-      plugins:{ legend:{ display:false }},
-      scales:{
-        x:{ ticks:{ color:"#888" }},
-        y:{ ticks:{ color:"#888" }}
-      }
-    }
+    data:{labels:sortedDates,datasets:[{data:values,borderColor:"#22c55e",tension:0.3}]},
+    options:{plugins:{legend:{display:false}}}
   })
 }
 
-function sortBy(field){
-  sortDirection=currentSort===field?-sortDirection:1
-  currentSort=field
-  allItems.sort((a,b)=>(a[field]>b[field]?1:-1)*sortDirection)
-  render()
-}
-
-async function sellItem(id){
-  const soldPrice=prompt("Enter selling price:")
-  if(!soldPrice) return
-  await fetch('/api/sell-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,sold_price:Number(soldPrice)})})
-  loadData()
-}
-
-async function deleteItem(id){
-  await fetch('/api/delete-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
-  loadData()
-}
-  async function changeQty(id, delta){
-
-  const item = allItems.find(i => i.id === id)
+async function changeQty(id, delta){
+  const item = allItems.find(i=>i.id===id)
   if(!item) return
-
-  const newQty = item.quantity + delta
-  if(newQty < 1) return
+  const newQty=item.quantity+delta
+  if(newQty<1) return
 
   await fetch('/api/update-item',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({
-      id: id,
-      quantity: newQty,
-      purchase_price: item.purchase_price,
-      current_price: item.current_price,
-      product_type: item.product_type
+      id:id,
+      quantity:newQty,
+      purchase_price:item.purchase_price,
+      current_price:item.current_price,
+      product_type:item.product_type
     })
   })
+  loadData()
+}
 
+async function sellItem(id){
+  const soldPrice=prompt("Enter selling price:")
+  if(!soldPrice) return
+  await fetch('/api/sell-item',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id,sold_price:Number(soldPrice)})
+  })
+  loadData()
+}
+
+async function deleteItem(id){
+  await fetch('/api/delete-item',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id})
+  })
   loadData()
 }
 
@@ -400,7 +360,11 @@ document.getElementById("itemForm").addEventListener("submit",async e=>{
     product_type:document.getElementById("product_type").value,
     purchase_date:new Date().toISOString()
   }
-  await fetch('/api/add-item',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+  await fetch('/api/add-item',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  })
   e.target.reset()
   loadData()
 })
