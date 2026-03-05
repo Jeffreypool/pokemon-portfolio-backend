@@ -4,7 +4,6 @@
   <title>Pokemon Investment Portfolio</title>
   <meta charset="UTF-8" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
 
   <style>
     body {
@@ -31,9 +30,7 @@
       font-size:64px;
       font-weight:700;
       color:#22c55e;
-      text-shadow:
-        0 0 8px rgba(34,197,94,0.6),
-        0 0 20px rgba(34,197,94,0.4);
+      text-shadow: 0 0 15px rgba(34,197,94,0.5);
     }
 
     .hero-sub {
@@ -54,38 +51,10 @@
       border:1px solid #1f2937;
       border-radius:12px;
       padding:20px;
-      box-shadow: 0 0 40px rgba(0,0,0,0.4);
     }
 
-    .kpi-title {
-      font-size:13px;
-      opacity:0.6;
-      margin-bottom:8px;
-    }
-
-    .kpi-value {
-      font-size:22px;
-      font-weight:600;
-    }
-
-    .kpi-sub {
-      margin-top:8px;
-      font-size:14px;
-    }
-
-    .chart-grid {
-      display:grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px,1fr));
-      gap:25px;
-      margin-bottom:40px;
-    }
-
-    .chart-title {
-      font-size:13px;
-      opacity:0.6;
-      margin-bottom:10px;
-      letter-spacing:1px;
-    }
+    .kpi-title { font-size:13px; opacity:0.6; }
+    .kpi-value { font-size:22px; font-weight:600; margin-top:6px; }
 
     .card {
       background:#161a22;
@@ -93,7 +62,6 @@
       border-radius:12px;
       border:1px solid #1f2937;
       margin-bottom:25px;
-      box-shadow: 0 0 40px rgba(0,0,0,0.4);
     }
 
     table {
@@ -152,39 +120,27 @@
   <div class="kpi-card">
     <div class="kpi-title">Active Holdings</div>
     <div id="activeValueKPI" class="kpi-value"></div>
-    <div id="activeProfitKPI" class="kpi-sub"></div>
   </div>
-
   <div class="kpi-card">
     <div class="kpi-title">Realized Gains</div>
     <div id="realizedValueKPI" class="kpi-value"></div>
-    <div id="realizedProfitKPI" class="kpi-sub"></div>
   </div>
-
   <div class="kpi-card">
-    <div class="kpi-title">Total Performance</div>
+    <div class="kpi-title">Total ROI</div>
     <div id="totalROIKPI" class="kpi-value"></div>
-    <div id="totalProfitKPI" class="kpi-sub"></div>
   </div>
 </div>
 
-<div class="chart-grid">
+<div class="card">
+  <canvas id="barChart"></canvas>
+</div>
 
-  <div class="card">
-    <div class="chart-title">Investment vs Current</div>
-    <canvas id="barChart"></canvas>
-  </div>
+<div class="card">
+  <canvas id="lineChart"></canvas>
+</div>
 
-  <div class="card">
-    <div class="chart-title">Portfolio Growth</div>
-    <canvas id="lineChart"></canvas>
-  </div>
-
-  <div class="card">
-    <div class="chart-title">Allocation</div>
-    <canvas id="donutChart"></canvas>
-  </div>
-
+<div class="card">
+  <canvas id="donutChart"></canvas>
 </div>
 
 <div class="card">
@@ -194,12 +150,12 @@
     <input id="quantity" type="number" value="1" required />
     <input id="purchase_price" type="number" placeholder="Purchase €" required />
     <input id="current_price" type="number" placeholder="Current €" required />
-    <input list="productList" id="product_type" placeholder="Product Type" />
-    <datalist id="productList"></datalist>
+    <input id="product_type" placeholder="Product Type" />
     <button>Add</button>
   </form>
 </div>
-  <div class="card">
+
+<div class="card">
   <h3>Active Portfolio</h3>
   <table>
     <thead>
@@ -235,61 +191,79 @@
 
 <script>
 
-let allItems = []
-let barChart, lineChart, donutChart
+let allItems=[]
+let barChart,lineChart,donutChart
 
 async function loadData(){
-  const res = await fetch('/api/dashboard')
-  const data = await res.json()
-  allItems = data.items
+  const res=await fetch('/api/dashboard')
+  const data=await res.json()
+  allItems=data.items
   render()
 }
 
 function render(){
+  const active=allItems.filter(i=>!i.sold)
+  const sold=allItems.filter(i=>i.sold)
 
-  const filter = document.getElementById("filterType")?.value || "all"
+  const invest=active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
+  const current=active.reduce((s,i)=>s+i.current_price*i.quantity,0)
+  const unrealized=current-invest
+  const realized=sold.reduce((s,i)=>s+((i.sold_price-i.purchase_price)*i.quantity),0)
+  const totalROI=invest>0?((unrealized+realized)/invest*100).toFixed(2):0
 
-  const items = filter==="all"
-    ? allItems
-    : allItems.filter(i=>i.product_type===filter)
+  document.getElementById("totalValueHero").innerHTML="€ "+current.toLocaleString()
+  document.getElementById("heroSubline").innerHTML=
+    `<span class="${unrealized>=0?'green':'red'}">€ ${unrealized.toLocaleString()}</span> • ${totalROI}% ROI`
+  document.getElementById("activeValueKPI").innerHTML="€ "+current.toLocaleString()
+  document.getElementById("realizedValueKPI").innerHTML="€ "+realized.toLocaleString()
+  document.getElementById("totalROIKPI").innerHTML=totalROI+"%"
 
-  const active = items.filter(i=>!i.sold)
-  const sold = items.filter(i=>i.sold)
-
-  renderStats(active, sold)
-  renderTables(active, sold)
-  renderBarChart(active)
-  renderDonutChart(active)
-  renderLineChart(active)
+  renderTables(active,sold)
+  renderCharts(active)
 }
 
-function renderStats(active,sold){
-  const invest = active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
-  const current = active.reduce((s,i)=>s+i.current_price*i.quantity,0)
-  const unrealized = current-invest
-  const realized = sold.reduce((s,i)=>s+((i.sold_price-i.purchase_price)*i.quantity),0)
-  const totalProfit = unrealized + realized
-  const totalROI = invest>0 ? ((totalProfit/invest)*100).toFixed(2) : 0
-  const soldValue = sold.reduce((s,i)=>s+(i.sold_price*i.quantity),0)
+function renderTables(active,sold){
+  const body=document.getElementById("activeBody")
+  body.innerHTML=""
 
-  document.getElementById("totalValueHero").innerHTML = "€ " + current.toLocaleString()
-  document.getElementById("heroSubline").innerHTML =
-    `<span class="${totalProfit>=0?'green':'red'}">€ ${totalProfit.toLocaleString()}</span> • ${totalROI}% ROI`
+  active.forEach(i=>{
+    const invest=i.purchase_price*i.quantity
+    const current=i.current_price*i.quantity
+    const profit=current-invest
 
-  document.getElementById("activeValueKPI").innerHTML = "€ " + current.toLocaleString()
-  document.getElementById("activeProfitKPI").innerHTML =
-    `<span class="${unrealized>=0?'green':'red'}">€ ${unrealized.toLocaleString()}</span>`
+    body.innerHTML+=`
+      <tr>
+        <td>${i.name}</td>
+        <td class="center">${i.quantity}</td>
+        <td class="right">€ ${invest.toLocaleString()}</td>
+        <td class="right">€ ${current.toLocaleString()}</td>
+        <td class="right ${profit>=0?'green':'red'}">
+          € ${profit.toLocaleString()}
+        </td>
+        <td class="center"><button onclick="sellItem('${i.id}')">💰</button></td>
+        <td class="center"><button onclick="deleteItem('${i.id}')">❌</button></td>
+      </tr>`
+  })
 
-  document.getElementById("realizedValueKPI").innerHTML = "€ " + soldValue.toLocaleString()
-  document.getElementById("realizedProfitKPI").innerHTML =
-    `<span class="${realized>=0?'green':'red'}">€ ${realized.toLocaleString()}</span>`
+  const soldBody=document.getElementById("soldBody")
+  soldBody.innerHTML=""
 
-  document.getElementById("totalROIKPI").innerHTML = totalROI + "%"
-  document.getElementById("totalProfitKPI").innerHTML =
-    `<span class="${totalProfit>=0?'green':'red'}">€ ${totalProfit.toLocaleString()}</span>`
+  sold.forEach(i=>{
+    const realized=(i.sold_price-i.purchase_price)*i.quantity
+    soldBody.innerHTML+=`
+      <tr>
+        <td>${i.name}</td>
+        <td class="right">€ ${i.sold_price}</td>
+        <td class="right">€ ${i.purchase_price}</td>
+        <td class="right ${realized>=0?'green':'red'}">
+          € ${realized.toLocaleString()}
+        </td>
+        <td>${i.sold_date?.split("T")[0]||""}</td>
+      </tr>`
+  })
 }
 
-function renderBarChart(active){
+function renderCharts(active){
   const invest=active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
   const current=active.reduce((s,i)=>s+i.current_price*i.quantity,0)
 
@@ -301,76 +275,44 @@ function renderBarChart(active){
   })
 }
 
-function renderLineChart(active){
-  const dates = active.map(i => i.purchase_date?.split("T")[0] || "")
-  const values = active.map(i => i.current_price * i.quantity)
-
-  if(lineChart) lineChart.destroy()
-
-  const ctx = document.getElementById("lineChart").getContext("2d")
-  const gradient = ctx.createLinearGradient(0,0,0,300)
-  gradient.addColorStop(0,"rgba(34,197,94,0.4)")
-  gradient.addColorStop(1,"rgba(34,197,94,0)")
-
-  lineChart=new Chart(ctx,{
-    type:"line",
-    data:{
-      labels:dates,
-      datasets:[{
-        data:values,
-        borderColor:"#22c55e",
-        backgroundColor:gradient,
-        fill:true,
-        tension:0.4,
-        borderWidth:3,
-        pointRadius:0
-      }]
-    },
-    options:{plugins:{legend:{display:false}}}
+async function sellItem(id){
+  const soldPrice=prompt("Enter selling price:")
+  if(!soldPrice) return
+  await fetch('/api/sell-item',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id,sold_price:Number(soldPrice)})
   })
+  loadData()
 }
 
-function renderDonutChart(active){
-  const grouped={}
-  active.forEach(item=>{
-    const value=item.current_price*item.quantity
-    const type=item.product_type||"Other"
-    if(!grouped[type]) grouped[type]=0
-    grouped[type]+=value
+async function deleteItem(id){
+  await fetch('/api/delete-item',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id})
   })
-
-  const labels=Object.keys(grouped)
-  const values=Object.values(grouped)
-  const total=values.reduce((a,b)=>a+b,0)
-
-  if(donutChart) donutChart.destroy()
-
-  donutChart=new Chart(document.getElementById("donutChart"),{
-    type:"doughnut",
-    data:{
-      labels:labels,
-      datasets:[{
-        data:values,
-        backgroundColor:["#22c55e","#d4af37","#3b82f6","#ef4444","#8b5cf6","#14b8a6"],
-        borderWidth:0
-      }]
-    },
-    options:{
-      cutout:"70%",
-      plugins:{
-        legend:{display:false},
-        tooltip:{
-          callbacks:{
-            label:function(context){
-              const percentage=((context.raw/total)*100).toFixed(1)
-              return `${context.label}: € ${context.raw.toLocaleString()} (${percentage}%)`
-            }
-          }
-        }
-      }
-    }
-  })
+  loadData()
 }
+
+document.getElementById("itemForm").addEventListener("submit",async e=>{
+  e.preventDefault()
+  const body={
+    name:name.value,
+    quantity:Number(quantity.value),
+    purchase_price:Number(purchase_price.value),
+    current_price:Number(current_price.value),
+    product_type:product_type.value,
+    purchase_date:new Date().toISOString()
+  }
+  await fetch('/api/add-item',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  })
+  e.target.reset()
+  loadData()
+})
 
 loadData()
 
