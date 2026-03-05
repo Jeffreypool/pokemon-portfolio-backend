@@ -246,13 +246,21 @@ async function loadData(){
 }
 
 function render(){
-  const active = allItems.filter(i=>!i.sold)
-  const sold = allItems.filter(i=>i.sold)
 
-  renderStats(active,sold)
+  const filter = document.getElementById("filterType")?.value || "all"
+
+  const items = filter==="all"
+    ? allItems
+    : allItems.filter(i=>i.product_type===filter)
+
+  const active = items.filter(i=>!i.sold)
+  const sold = items.filter(i=>i.sold)
+
+  renderStats(active, sold)
+  renderTables(active, sold)
   renderBarChart(active)
-  renderLineChart(active)
   renderDonutChart(active)
+  renderLineChart(active)
 }
 
 function renderStats(active,sold){
