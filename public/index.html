@@ -73,12 +73,97 @@
   transform: translateY(-2px);
   transition: 0.2s ease;
 }
+    /* HERO */
+
+.hero {
+  text-align:center;
+  margin: 60px 0 40px 0;
+}
+
+.hero-value {
+  font-size: 64px;
+  font-weight: 700;
+  background: linear-gradient(90deg,#22c55e,#d4af37);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-sub {
+  margin-top: 12px;
+  font-size: 16px;
+  opacity: 0.7;
+}
+
+/* KPI GRID */
+
+.kpi-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px,1fr));
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.kpi-card {
+  background:#161a22;
+  border:1px solid #1f2937;
+  border-radius:12px;
+  padding:20px;
+}
+
+.kpi-title {
+  font-size:13px;
+  opacity:0.6;
+  margin-bottom:8px;
+}
+
+.kpi-value {
+  font-size:22px;
+  font-weight:600;
+}
+
+.kpi-sub {
+  margin-top:8px;
+  font-size:14px;
+}
   </style>
 </head>
 
 <body>
 
-<h1>POKEMON INVESTMENT PORTFOLIO</h1>
+<body>
+
+<h1 style="text-align:center; letter-spacing:2px; opacity:0.8;">
+  POKEMON INVESTMENT PORTFOLIO
+</h1>
+
+<!-- HERO -->
+<div class="hero">
+  <div id="totalValueHero" class="hero-value"></div>
+  <div id="heroSubline" class="hero-sub"></div>
+</div>
+
+<!-- KPI CARDS -->
+<div class="kpi-grid">
+
+  <div class="kpi-card">
+    <div class="kpi-title">Active Holdings</div>
+    <div id="activeValueKPI" class="kpi-value"></div>
+    <div id="activeProfitKPI" class="kpi-sub"></div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">Realized Gains</div>
+    <div id="realizedValueKPI" class="kpi-value"></div>
+    <div id="realizedProfitKPI" class="kpi-sub"></div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">Total Performance</div>
+    <div id="totalROIKPI" class="kpi-value"></div>
+    <div id="totalProfitKPI" class="kpi-sub"></div>
+  </div>
+
+</div>
 
   <div class="card" style="padding:30px;">
 
@@ -239,13 +324,55 @@ function renderStats(active,sold){
   const invest = active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
   const current = active.reduce((s,i)=>s+i.current_price*i.quantity,0)
   const unrealized = current-invest
-  const realized = sold.reduce((s,i)=>s+((i.sold_price-i.purchase_price)*i.quantity),0)
+
+  const realized = sold.reduce(
+    (s,i)=>s+((i.sold_price-i.purchase_price)*i.quantity),0
+  )
+
+  const soldValue = sold.reduce(
+    (s,i)=>s+(i.sold_price*i.quantity),0
+  )
+
   const totalProfit = unrealized + realized
   const totalROI = invest>0 ? ((totalProfit/invest)*100).toFixed(2) : 0
-  const soldInvest = sold.reduce(
-  (s,i)=> s + (i.purchase_price * i.quantity),
-  0
-)
+
+  // HERO
+  document.getElementById("totalValueHero").innerHTML =
+    "€ " + current.toLocaleString()
+
+  document.getElementById("heroSubline").innerHTML =
+    `<span class="${totalProfit>=0?'green':'red'}">
+      € ${totalProfit.toLocaleString()}
+    </span>
+    • ${totalROI}% ROI`
+
+  // KPI 1
+  document.getElementById("activeValueKPI").innerHTML =
+    "€ " + current.toLocaleString()
+
+  document.getElementById("activeProfitKPI").innerHTML =
+    `<span class="${unrealized>=0?'green':'red'}">
+      € ${unrealized.toLocaleString()}
+    </span>`
+
+  // KPI 2
+  document.getElementById("realizedValueKPI").innerHTML =
+    "€ " + soldValue.toLocaleString()
+
+  document.getElementById("realizedProfitKPI").innerHTML =
+    `<span class="${realized>=0?'green':'red'}">
+      € ${realized.toLocaleString()}
+    </span>`
+
+  // KPI 3
+  document.getElementById("totalROIKPI").innerHTML =
+    `${totalROI}%`
+
+  document.getElementById("totalProfitKPI").innerHTML =
+    `<span class="${totalProfit>=0?'green':'red'}">
+      € ${totalProfit.toLocaleString()}
+    </span>`
+}
 
 const realizedROI = soldInvest > 0
   ? ((realized / soldInvest) * 100).toFixed(2)
