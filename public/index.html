@@ -24,7 +24,7 @@
 
     .hero {
       text-align:center;
-      margin-bottom:40px;
+      margin-bottom:50px;
     }
 
     .hero-value {
@@ -84,6 +84,42 @@
       transition: 0.2s ease;
     }
 
+    table {
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+    }
+
+    th, td {
+      padding:10px 8px;
+      border-bottom:1px solid #1f2937;
+    }
+
+    th { color:#9ca3af; }
+
+    .right { text-align:right; }
+    .center { text-align:center; }
+
+    input, select {
+      padding:6px 8px;
+      background:#0f1115;
+      color:#e5e7eb;
+      border:1px solid #2a3240;
+      border-radius:6px;
+      margin-right:8px;
+      margin-bottom:8px;
+    }
+
+    button {
+      padding:6px 10px;
+      border-radius:6px;
+      border:none;
+      background:#d4af37;
+      color:black;
+      font-weight:600;
+      cursor:pointer;
+    }
+
     .green { color:#22c55e; }
     .red { color:#ef4444; }
 
@@ -128,6 +164,60 @@
   <canvas id="lineChart"></canvas>
 </div>
 
+<div class="card">
+  <h3>Add Item</h3>
+  <form id="itemForm">
+    <input id="name" placeholder="Name" required />
+    <input id="quantity" type="number" value="1" required />
+    <input id="purchase_price" type="number" placeholder="Purchase €" required />
+    <input id="current_price" type="number" placeholder="Current €" required />
+    <input list="productList" id="product_type" placeholder="Product Type" />
+    <datalist id="productList"></datalist>
+    <button>Add</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Filter</h3>
+  <select id="filterType">
+    <option value="all">All</option>
+  </select>
+</div>
+
+<div class="card">
+  <h3>Active Portfolio</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Asset</th>
+        <th class="center">Qty</th>
+        <th class="right">Investment</th>
+        <th class="right">Current</th>
+        <th class="right">Profit</th>
+        <th class="center">Sell</th>
+        <th class="center">Delete</th>
+      </tr>
+    </thead>
+    <tbody id="activeBody"></tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Sold Items</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Asset</th>
+        <th class="right">Sold Price</th>
+        <th class="right">Investment</th>
+        <th class="right">Realized Profit</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody id="soldBody"></tbody>
+  </table>
+</div>
+
 <script>
 let allItems = []
 let barChart, lineChart
@@ -136,16 +226,34 @@ async function loadData(){
   const res = await fetch('/api/dashboard')
   const data = await res.json()
   allItems = data.items
+  populateTypes()
   render()
 }
 
+function populateTypes(){
+  const types = [...new Set(allItems.map(i=>i.product_type).filter(Boolean))]
+  const filter = document.getElementById("filterType")
+  const list = document.getElementById("productList")
+
+  filter.innerHTML = '<option value="all">All</option>'
+  list.innerHTML = ""
+
+  types.forEach(t=>{
+    filter.innerHTML += `<option value="${t}">${t}</option>`
+    list.innerHTML += `<option value="${t}">`
+  })
+}
+
 function render(){
-  const active = allItems.filter(i=>!i.sold)
-  const sold = allItems.filter(i=>i.sold)
+  const filter = document.getElementById("filterType").value
+  const items = filter==="all" ? allItems : allItems.filter(i=>i.product_type===filter)
+
+  const active = items.filter(i=>!i.sold)
+  const sold = items.filter(i=>i.sold)
 
   renderStats(active,sold)
+  renderTables(active,sold)
   renderBarChart(active)
-  loadPriceHistoryChart()
 }
 
 function renderStats(active,sold){
@@ -153,9 +261,9 @@ function renderStats(active,sold){
   const current = active.reduce((s,i)=>s+i.current_price*i.quantity,0)
   const unrealized = current-invest
   const realized = sold.reduce((s,i)=>s+((i.sold_price-i.purchase_price)*i.quantity),0)
-  const soldValue = sold.reduce((s,i)=>s+(i.sold_price*i.quantity),0)
   const totalProfit = unrealized + realized
   const totalROI = invest>0 ? ((totalProfit/invest)*100).toFixed(2) : 0
+  const soldValue = sold.reduce((s,i)=>s+(i.sold_price*i.quantity),0)
 
   document.getElementById("totalValueHero").innerHTML = "€ " + current.toLocaleString()
   document.getElementById("heroSubline").innerHTML =
