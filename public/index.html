@@ -10,7 +10,7 @@
     body {
       margin: 0;
       padding: 50px 60px;
-      background: #0f1115;
+      background: radial-gradient(circle at top, #11151c, #0b0e13 70%);
       font-family: Inter, sans-serif;
       color: #e5e7eb;
     }
@@ -69,6 +69,10 @@
     .red { color: #ef4444; }
 
     canvas { max-height: 170px !important; }
+    .card:hover {
+  transform: translateY(-2px);
+  transition: 0.2s ease;
+}
   </style>
 </head>
 
@@ -76,24 +80,33 @@
 
 <h1>POKEMON INVESTMENT PORTFOLIO</h1>
 
-  <div class="card">
+  <div class="card" style="padding:30px;">
 
-  <button onclick="exportToExcel()" style="margin-bottom:20px;">
-    Export Full Portfolio to Excel
-  </button>
-
-  <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
 
     <!-- LEFT -->
-    <div style="display:flex; flex-direction:column;">
-      <div style="font-size:13px; opacity:0.6;">Active Portfolio Value</div>
-      <div id="totalValue" style="font-size:32px; margin-top:6px;"></div>
-
-      <div style="margin-top:12px;">
-        <div id="totalProfit"></div>
-        <div id="totalROI"></div>
+    <div>
+      <div style="font-size:12px; letter-spacing:1px; opacity:0.5;">
+        NET WORTH
       </div>
+      <div id="totalValue" style="font-size:42px; font-weight:600; margin-top:6px;"></div>
+      <div id="totalProfit" style="margin-top:10px;"></div>
+      <div id="totalROI"></div>
     </div>
+
+    <!-- RIGHT -->
+    <div style="text-align:right;">
+      <div style="font-size:12px; letter-spacing:1px; opacity:0.5;">
+        REALIZED VALUE
+      </div>
+      <div id="totalSoldValue" style="font-size:42px; font-weight:600; margin-top:6px;"></div>
+      <div id="realizedProfit" style="margin-top:10px;"></div>
+      <div id="realizedROI"></div>
+    </div>
+
+  </div>
+
+</div>
 
     <!-- RIGHT -->
     <div style="display:flex; flex-direction:column; text-align:right;">
@@ -401,12 +414,15 @@ async function loadPriceHistoryChart(){
     type:"line",
     data:{
       labels: months,
-      datasets:[{
-        label:"Portfolio Value",
-        data: values,
-        borderColor:"#22c55e",
-        tension:0.3
-      }]
+     datasets:[{
+  label:"Portfolio Value",
+  data: values,
+  borderColor:"#22c55e",
+  backgroundColor:"rgba(34,197,94,0.15)",
+  fill:true,
+  tension:0.3,
+  borderWidth:2
+}]
     },
     options:{
       plugins:{ legend:{ display:false }},
