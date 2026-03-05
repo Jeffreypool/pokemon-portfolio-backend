@@ -261,20 +261,28 @@ function renderBarChart(active){
 }
 
 function renderLineChart(active){
-  const dates=active.map(i=>i.purchase_date?.split("T")[0] || "")
-  const values=active.map(i=>i.current_price*i.quantity)
+  const dates = active.map(i => i.purchase_date?.split("T")[0] || "")
+  const values = active.map(i => i.current_price * i.quantity)
 
   if(lineChart) lineChart.destroy()
-  lineChart=new Chart(document.getElementById("lineChart"),{
+
+  const ctx = document.getElementById("lineChart").getContext("2d")
+  const gradient = ctx.createLinearGradient(0,0,0,300)
+  gradient.addColorStop(0,"rgba(34,197,94,0.4)")
+  gradient.addColorStop(1,"rgba(34,197,94,0)")
+
+  lineChart=new Chart(ctx,{
     type:"line",
     data:{
       labels:dates,
       datasets:[{
         data:values,
         borderColor:"#22c55e",
-        backgroundColor:"rgba(34,197,94,0.15)",
+        backgroundColor:gradient,
         fill:true,
-        tension:0.3
+        tension:0.4,
+        borderWidth:3,
+        pointRadius:0
       }]
     },
     options:{plugins:{legend:{display:false}}}
@@ -285,23 +293,46 @@ function renderDonutChart(active){
   const grouped={}
   active.forEach(item=>{
     const value=item.current_price*item.quantity
-    if(!grouped[item.product_type]) grouped[item.product_type]=0
-    grouped[item.product_type]+=value
+    const type=item.product_type||"Other"
+    if(!grouped[type]) grouped[type]=0
+    grouped[type]+=value
   })
 
   const labels=Object.keys(grouped)
   const values=Object.values(grouped)
-  const colors=["#22c55e","#d4af37","#3b82f6","#ef4444","#8b5cf6","#14b8a6"]
+  const total=values.reduce((a,b)=>a+b,0)
 
   if(donutChart) donutChart.destroy()
+
   donutChart=new Chart(document.getElementById("donutChart"),{
     type:"doughnut",
-    data:{labels:labels,datasets:[{data:values,backgroundColor:colors}]},
-    options:{plugins:{legend:{labels:{color:"#e5e7eb"}}}}
+    data:{
+      labels:labels,
+      datasets:[{
+        data:values,
+        backgroundColor:["#22c55e","#d4af37","#3b82f6","#ef4444","#8b5cf6","#14b8a6"],
+        borderWidth:0
+      }]
+    },
+    options:{
+      cutout:"70%",
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label:function(context){
+              const percentage=((context.raw/total)*100).toFixed(1)
+              return `${context.label}: € ${context.raw.toLocaleString()} (${percentage}%)`
+            }
+          }
+        }
+      }
+    }
   })
 }
 
 loadData()
+
 </script>
 
 </body>
