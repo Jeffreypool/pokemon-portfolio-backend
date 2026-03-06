@@ -80,7 +80,7 @@
     .right { text-align:right; }
     .center { text-align:center; }
 
-    input, select {
+    input {
       padding:6px 8px;
       background:#0f1115;
       color:#e5e7eb;
@@ -151,7 +151,7 @@
     <input id="purchase_price" type="number" placeholder="Purchase €" required />
     <input id="current_price" type="number" placeholder="Current €" required />
     <input id="product_type" placeholder="Product Type" />
-    <button>Add</button>
+    <button type="submit">Add</button>
   </form>
 </div>
 
@@ -188,8 +188,6 @@
     <tbody id="soldBody"></tbody>
   </table>
 </div>
-
-
 
 <script>
 
@@ -248,11 +246,7 @@ function renderTables(active,sold){
         <td>${i.name}</td>
         <td class="center">${i.quantity}</td>
         <td class="right">€ ${invest.toLocaleString()}</td>
-        <td class="right editable"
-            data-id="${i.id}"
-            data-value="${i.current_price}">
-            € ${current.toLocaleString()}
-        </td>
+        <td class="right">€ ${current.toLocaleString()}</td>
         <td class="right ${profit>=0?'green':'red'}">
           € ${profit.toLocaleString()}
         </td>
@@ -260,8 +254,6 @@ function renderTables(active,sold){
         <td class="center"><button onclick="deleteItem('${i.id}')">❌</button></td>
       </tr>`
   })
-
-  enableInlineEdit()
 
   const soldBody=document.getElementById("soldBody")
   soldBody.innerHTML=""
@@ -278,31 +270,6 @@ function renderTables(active,sold){
         </td>
         <td>${i.sold_date?.split("T")[0]||""}</td>
       </tr>`
-  })
-}
-
-function enableInlineEdit(){
-  document.querySelectorAll(".editable").forEach(cell=>{
-    cell.onclick=function(){
-      const id=this.dataset.id
-      const oldValue=this.dataset.value
-
-      this.innerHTML=`<input type="number" value="${oldValue}" style="width:80px;">`
-      const input=this.querySelector("input")
-      input.focus()
-
-      input.onblur=async ()=>{
-        const newValue=Number(input.value)
-
-        await fetch('/api/update-item',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({id,current_price:newValue})
-        })
-
-        loadData()
-      }
-    }
   })
 }
 
@@ -378,38 +345,15 @@ function renderDonutChart(active){
   })
 }
 
-async function sellItem(id){
-  const soldPrice=prompt("Enter selling price:")
-  if(!soldPrice) return
-
-  await fetch('/api/sell-item',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({id,sold_price:Number(soldPrice)})
-  })
-
-  loadData()
-}
-
-async function deleteItem(id){
-  await fetch('/api/delete-item',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({id})
-  })
-
-  loadData()
-}
-
 document.getElementById("itemForm").addEventListener("submit",async e=>{
   e.preventDefault()
 
   const body={
-    name:name.value,
-    quantity:Number(quantity.value),
-    purchase_price:Number(purchase_price.value),
-    current_price:Number(current_price.value),
-    product_type:product_type.value,
+    name:document.getElementById("name").value,
+    quantity:Number(document.getElementById("quantity").value),
+    purchase_price:Number(document.getElementById("purchase_price").value),
+    current_price:Number(document.getElementById("current_price").value),
+    product_type:document.getElementById("product_type").value,
     purchase_date:new Date().toISOString()
   }
 
@@ -426,7 +370,6 @@ document.getElementById("itemForm").addEventListener("submit",async e=>{
 loadData()
 
 </script>
-
 
 </body>
 </html>
