@@ -191,6 +191,8 @@
 
 <script>
 
+<script>
+
 let allItems=[]
 let barChart,lineChart,donutChart
 
@@ -205,21 +207,31 @@ function render(){
   const active=allItems.filter(i=>!i.sold)
   const sold=allItems.filter(i=>i.sold)
 
+  renderStats(active,sold)
+  renderTables(active,sold)
+  renderBarChart(active)
+  renderLineChart(active)
+  renderDonutChart(active)
+}
+
+function renderStats(active,sold){
   const invest=active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
   const current=active.reduce((s,i)=>s+i.current_price*i.quantity,0)
   const unrealized=current-invest
   const realized=sold.reduce((s,i)=>s+((i.sold_price-i.purchase_price)*i.quantity),0)
-  const totalROI=invest>0?((unrealized+realized)/invest*100).toFixed(2):0
+  const totalProfit=unrealized+realized
+  const totalROI=invest>0?((totalProfit/invest)*100).toFixed(2):0
+  const soldValue=sold.reduce((s,i)=>s+(i.sold_price*i.quantity),0)
 
   document.getElementById("totalValueHero").innerHTML="€ "+current.toLocaleString()
   document.getElementById("heroSubline").innerHTML=
-    `<span class="${unrealized>=0?'green':'red'}">€ ${unrealized.toLocaleString()}</span> • ${totalROI}% ROI`
-  document.getElementById("activeValueKPI").innerHTML="€ "+current.toLocaleString()
-  document.getElementById("realizedValueKPI").innerHTML="€ "+realized.toLocaleString()
-  document.getElementById("totalROIKPI").innerHTML=totalROI+"%"
+    `<span class="${totalProfit>=0?'green':'red'}">
+      € ${totalProfit.toLocaleString()}
+    </span> • ${totalROI}% ROI`
 
-  renderTables(active,sold)
-  renderCharts(active)
+  document.getElementById("activeValueKPI").innerHTML="€ "+current.toLocaleString()
+  document.getElementById("realizedValueKPI").innerHTML="€ "+soldValue.toLocaleString()
+  document.getElementById("totalROIKPI").innerHTML=totalROI+"%"
 }
 
 function renderTables(active,sold){
@@ -236,7 +248,11 @@ function renderTables(active,sold){
         <td>${i.name}</td>
         <td class="center">${i.quantity}</td>
         <td class="right">€ ${invest.toLocaleString()}</td>
-        <td class="right">€ ${current.toLocaleString()}</td>
+        <td class="right editable"
+            data-id="${i.id}"
+            data-value="${i.current_price}">
+            € ${current.toLocaleString()}
+        </td>
         <td class="right ${profit>=0?'green':'red'}">
           € ${profit.toLocaleString()}
         </td>
@@ -244,6 +260,8 @@ function renderTables(active,sold){
         <td class="center"><button onclick="deleteItem('${i.id}')">❌</button></td>
       </tr>`
   })
+
+  enableInlineEdit()
 
   const soldBody=document.getElementById("soldBody")
   soldBody.innerHTML=""
@@ -263,26 +281,113 @@ function renderTables(active,sold){
   })
 }
 
-function renderCharts(active){
+function enableInlineEdit(){
+  document.querySelectorAll(".editable").forEach(cell=>{
+    cell.onclick=function(){
+      const id=this.dataset.id
+      const oldValue=this.dataset.value
+
+      this.innerHTML=`<input type="number" value="${oldValue}" style="width:80px;">`
+      const input=this.querySelector("input")
+      input.focus()
+
+      input.onblur=async ()=>{
+        const newValue=Number(input.value)
+
+        await fetch('/api/update-item',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({id,current_price:newValue})
+        })
+
+        loadData()
+      }
+    }
+  })
+}
+
+function renderBarChart(active){
   const invest=active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
   const current=active.reduce((s,i)=>s+i.current_price*i.quantity,0)
 
   if(barChart) barChart.destroy()
+
   barChart=new Chart(document.getElementById("barChart"),{
     type:"bar",
-    data:{labels:["Investment","Current"],datasets:[{data:[invest,current],backgroundColor:["#444","#d4af37"]}]},
+    data:{
+      labels:["Investment","Current"],
+      datasets:[{
+        data:[invest,current],
+        backgroundColor:["#444","#d4af37"]
+      }]
+    },
     options:{plugins:{legend:{display:false}}}
+  })
+}
+
+function renderLineChart(active){
+  const dates=active.map(i=>i.purchase_date?.split("T")[0]||"")
+  const values=active.map(i=>i.current_price*i.quantity)
+
+  if(lineChart) lineChart.destroy()
+
+  lineChart=new Chart(document.getElementById("lineChart"),{
+    type:"line",
+    data:{
+      labels:dates,
+      datasets:[{
+        data:values,
+        borderColor:"#22c55e",
+        backgroundColor:"rgba(34,197,94,0.15)",
+        fill:true,
+        tension:0.4
+      }]
+    },
+    options:{plugins:{legend:{display:false}}}
+  })
+}
+
+function renderDonutChart(active){
+  const grouped={}
+  active.forEach(i=>{
+    const value=i.current_price*i.quantity
+    const type=i.product_type||"Other"
+    if(!grouped[type]) grouped[type]=0
+    grouped[type]+=value
+  })
+
+  const labels=Object.keys(grouped)
+  const values=Object.values(grouped)
+
+  if(donutChart) donutChart.destroy()
+
+  donutChart=new Chart(document.getElementById("donutChart"),{
+    type:"doughnut",
+    data:{
+      labels,
+      datasets:[{
+        data:values,
+        backgroundColor:["#22c55e","#d4af37","#3b82f6","#ef4444","#8b5cf6","#14b8a6"],
+        borderWidth:0
+      }]
+    },
+    options:{
+      cutout:"70%",
+      plugins:{legend:{position:"bottom"}}
+    }
   })
 }
 
 async function sellItem(id){
   const soldPrice=prompt("Enter selling price:")
   if(!soldPrice) return
+
   await fetch('/api/sell-item',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({id,sold_price:Number(soldPrice)})
   })
+
   loadData()
 }
 
@@ -292,11 +397,13 @@ async function deleteItem(id){
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify({id})
   })
+
   loadData()
 }
 
 document.getElementById("itemForm").addEventListener("submit",async e=>{
   e.preventDefault()
+
   const body={
     name:name.value,
     quantity:Number(quantity.value),
@@ -305,17 +412,20 @@ document.getElementById("itemForm").addEventListener("submit",async e=>{
     product_type:product_type.value,
     purchase_date:new Date().toISOString()
   }
+
   await fetch('/api/add-item',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)
   })
+
   e.target.reset()
   loadData()
 })
 
 loadData()
 
+</script>
 </script>
 
 </body>
