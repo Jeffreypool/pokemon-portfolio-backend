@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     while (page <= totalPages) {
 
       const response = await fetch(
-        `https://pokemon-tcg-api.p.rapidapi.com/products?page=${page}`,
+        `https://pokemon-tcg-api.p.rapidapi.com/products?page=${page}&sort=relevance`,
         {
           headers: {
             "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
@@ -28,7 +28,6 @@ export default async function handler(req, res) {
       const apiData = await response.json()
 
       const products = apiData.data || []
-
       totalPages = apiData.paging?.total || 1
 
       for (const product of products) {
