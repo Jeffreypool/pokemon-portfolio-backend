@@ -154,6 +154,12 @@
     <button type="submit">Add</button>
   </form>
 </div>
+  <div class="card">
+  <h3>Filter</h3>
+  <select id="filterType">
+    <option value="all">All</option>
+  </select>
+</div>
 
 <div class="card">
   <h3>Active Portfolio</h3>
@@ -198,12 +204,20 @@ async function loadData(){
   const res=await fetch('/api/dashboard')
   const data=await res.json()
   allItems=data.items
+  populateFilter()
   render()
 }
 
 function render(){
-  const active=allItems.filter(i=>!i.sold)
-  const sold=allItems.filter(i=>i.sold)
+
+  const filter = document.getElementById("filterType")?.value || "all"
+
+  const items = filter === "all"
+    ? allItems
+    : allItems.filter(i => i.product_type === filter)
+
+  const active = items.filter(i=>!i.sold)
+  const sold = items.filter(i=>i.sold)
 
   renderStats(active,sold)
   renderTables(active,sold)
@@ -366,8 +380,25 @@ document.getElementById("itemForm").addEventListener("submit",async e=>{
   e.target.reset()
   loadData()
 })
-
+document.addEventListener("change", function(e){
+  if(e.target.id === "filterType"){
+    render()
+  }
+})
 loadData()
+  function populateFilter(){
+  const select = document.getElementById("filterType")
+
+  if(!select) return
+
+  const types = [...new Set(allItems.map(i=>i.product_type).filter(Boolean))]
+
+  select.innerHTML = `<option value="all">All</option>`
+
+  types.forEach(type=>{
+    select.innerHTML += `<option value="${type}">${type}</option>`
+  })
+}
 
 </script>
 
