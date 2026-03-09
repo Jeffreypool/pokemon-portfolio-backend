@@ -7,6 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
 
+  // 1️⃣ portfolio items ophalen
   const { data: items, error } = await supabase
     .from('portfolio_items')
     .select('*')
@@ -15,50 +16,46 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: error.message })
   }
 
+  // 2️⃣ ÉÉN API request doen
+  const response = await fetch(
+    "https://pokemon-prices.p.rapidapi.com/products?page=1&per_page=200",
+    {
+      headers: {
+        "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+        "X-RapidAPI-Host": "pokemon-prices.p.rapidapi.com"
+      }
+    }
+  )
+
+  const apiData = await response.json()
+  const products = apiData.data || []
+
   const results = []
 
+  // 3️⃣ portfolio items matchen
   for (const item of items) {
 
-    const query = encodeURIComponent(item.name)
+    const match = products.find(p =>
+      p.name.toLowerCase().includes(item.name.toLowerCase())
+    )
 
-   const response = await fetch(
-  "https://pokemon-prices.p.rapidapi.com/products?page=1&per_page=200",
-  {
-    headers: {
-      "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-      "X-RapidAPI-Host": "pokemon-prices.p.rapidapi.com"
-    }
-  }
-)
-
-    const data = await response.json()
-
-results.push({
-  query: item.name,
-  api_response: data
-})
-
-continue
-
-    if (!data || !data.data || data.data.length === 0) {
+    if (!match) {
       results.push({
         name: item.name,
-        status: "not found"
+        status: "no match"
       })
       continue
     }
 
-    const product = data.data[0]
+    const price = match.prices?.cardmarket?.lowest
 
-    if (!product.prices || !product.prices.cardmarket) {
+    if (!price) {
       results.push({
         name: item.name,
-        status: "no cardmarket price"
+        status: "no price"
       })
       continue
     }
-
-    const price = product.prices.cardmarket.lowest
 
     await supabase
       .from('portfolio_items')
