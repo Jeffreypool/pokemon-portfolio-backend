@@ -33,6 +33,13 @@ export default async function handler(req, res) {
 
     const data = await response.json()
 
+results.push({
+  query: item.name,
+  api_response: data
+})
+
+continue
+
     if (!data || !data.data || data.data.length === 0) {
       results.push({
         name: item.name,
