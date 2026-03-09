@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
   for (const item of items) {
 
-    const query = encodeURIComponent(item.name.split(' ')[0])
+    const query = encodeURIComponent(item.name)
 
     const response = await fetch(
       `https://pokemon-prices.p.rapidapi.com/products/search?q=${query}`,
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
 
     const data = await response.json()
 
-    if (!data || !data.results || data.results.length === 0) {
+    if (!data || !data.data || data.data.length === 0) {
       results.push({
         name: item.name,
         status: "not found"
@@ -41,9 +41,9 @@ export default async function handler(req, res) {
       continue
     }
 
-    const product = data.results[0]
+    const product = data.data[0]
 
-    if (!product.cardmarket || !product.cardmarket.first_english_nm) {
+    if (!product.prices || !product.prices.cardmarket) {
       results.push({
         name: item.name,
         status: "no cardmarket price"
@@ -51,7 +51,7 @@ export default async function handler(req, res) {
       continue
     }
 
-    const price = product.cardmarket.first_english_nm
+    const price = product.prices.cardmarket.lowest
 
     await supabase
       .from('portfolio_items')
