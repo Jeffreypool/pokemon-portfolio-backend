@@ -7,23 +7,21 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
 
-  try {
-
-    const response = await fetch(
-      "https://pokemon-prices.p.rapidapi.com/products",
-      {
-        headers: {
-          "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-          "X-RapidAPI-Host": "pokemon-prices.p.rapidapi.com"
-        }
+  const response = await fetch(
+    "https://pokemon-tcg-api.p.rapidapi.com/products?page=1&sort=relevance",
+    {
+      headers: {
+        "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+        "X-RapidAPI-Host": "pokemon-tcg-api.p.rapidapi.com"
       }
-    )
+    }
+  )
 
-    const data = await response.json()
+  const data = await response.json()
 
-    return res.status(200).json(data)
+  res.status(200).json(data)
 
-  } catch (err) {
+} catch (err) {
 
     return res.status(500).json({
       error: err.message
