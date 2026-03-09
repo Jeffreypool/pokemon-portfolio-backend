@@ -9,19 +9,52 @@ export default async function handler(req, res) {
 
   try {
 
-    const response = await fetch(
-      "https://pokemon-tcg-api.p.rapidapi.com/products?page=1&sort=relevance",
-      {
-        headers: {
-          "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-          "X-RapidAPI-Host": "pokemon-tcg-api.p.rapidapi.com"
+    let page = 1
+    let totalPages = 1
+    let synced = 0
+
+    while (page <= totalPages) {
+
+      const response = await fetch(
+        `https://pokemon-tcg-api.p.rapidapi.com/products?page=${page}`,
+        {
+          headers: {
+            "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+            "X-RapidAPI-Host": "pokemon-tcg-api.p.rapidapi.com"
+          }
         }
+      )
+
+      const apiData = await response.json()
+
+      const products = apiData.data || []
+
+      totalPages = apiData.paging?.total || 1
+
+      for (const product of products) {
+
+        const price = product.prices?.cardmarket?.lowest || null
+
+        await supabase
+          .from('products')
+          .upsert({
+            id: product.id,
+            name: product.name,
+            slug: product.slug,
+            price: price,
+            updated_at: new Date()
+          })
+
+        synced++
       }
-    )
 
-    const data = await response.json()
+      page++
+    }
 
-    return res.status(200).json(data)
+    return res.json({
+      synced_products: synced,
+      pages_processed: totalPages
+    })
 
   } catch (err) {
 
