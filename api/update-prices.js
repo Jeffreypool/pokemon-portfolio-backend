@@ -7,9 +7,13 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
 
-  const { data: items } = await supabase
+  const { data: items, error } = await supabase
     .from('portfolio_items')
     .select('*')
+
+  if (error) {
+    return res.status(500).json({ error: error.message })
+  }
 
   const results = []
 
@@ -27,35 +31,27 @@ export default async function handler(req, res) {
       }
     )
 
-  if (!data || !data.results || data.results.length === 0) {
-  results.push({
-    name: item.name,
-    status: "not found"
-  })
-  continue
-}
+    const data = await response.json()
 
-const product = data.results[0]
-
-if (!product.cardmarket || !product.cardmarket.first_english_nm) {
-  results.push({
-    name: item.name,
-    status: "no cardmarket price"
-  })
-  continue
-}
-
-const price = product.cardmarket.first_english_nm
-
-    const price = data[0].cardmarket?.first_english_nm
-
-    if (!price) {
+    if (!data || !data.results || data.results.length === 0) {
       results.push({
         name: item.name,
-        status: "no price"
+        status: "not found"
       })
       continue
     }
+
+    const product = data.results[0]
+
+    if (!product.cardmarket || !product.cardmarket.first_english_nm) {
+      results.push({
+        name: item.name,
+        status: "no cardmarket price"
+      })
+      continue
+    }
+
+    const price = product.cardmarket.first_english_nm
 
     await supabase
       .from('portfolio_items')
