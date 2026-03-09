@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     const apiData = await response.json()
 
 return res.status(200).json(apiData)
-     }
+     
     for (const product of products) {
 
       const price = product.prices?.cardmarket?.lowest || null
