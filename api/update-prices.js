@@ -11,30 +11,54 @@ export default async function handler(req, res) {
     .from('portfolio_items')
     .select('*')
 
-  if (!items || items.length === 0) {
-    return res.status(200).json({ message: "No items found" })
-  }
+  const results = []
 
-  const item = items[0]
+  for (const item of items) {
 
-  if (!item.cardmarket_url) {
-    return res.status(200).json({
-      message: "Item has no cardmarket_url",
-      item
+    const query = encodeURIComponent(item.name)
+
+    const response = await fetch(
+      `https://pokemon-prices.p.rapidapi.com/products/search?q=${query}`,
+      {
+        headers: {
+          "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+          "X-RapidAPI-Host": "pokemon-prices.p.rapidapi.com"
+        }
+      }
+    )
+
+    const data = await response.json()
+
+    if (!data || data.length === 0) {
+      results.push({
+        name: item.name,
+        status: "not found"
+      })
+      continue
+    }
+
+    const price = data[0].cardmarket?.first_english_nm
+
+    if (!price) {
+      results.push({
+        name: item.name,
+        status: "no price"
+      })
+      continue
+    }
+
+    await supabase
+      .from('portfolio_items')
+      .update({ current_price: price })
+      .eq('id', item.id)
+
+    results.push({
+      name: item.name,
+      new_price: price
     })
   }
 
-  const response = await fetch(item.cardmarket_url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0'
-    }
-  })
-
-  const html = await response.text()
-
   return res.status(200).json({
-    url: item.cardmarket_url,
-    status: response.status,
-    preview: html.substring(0, 500)
+    updated: results
   })
 }
