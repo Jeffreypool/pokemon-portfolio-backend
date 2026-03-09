@@ -35,9 +35,21 @@ export default async function handler(req, res) {
   // 3️⃣ portfolio items matchen
   for (const item of items) {
 
-    const match = products.find(p =>
-      p.name.toLowerCase().includes(item.name.toLowerCase())
-    )
+    const normalize = (str) =>
+  str
+    .toLowerCase()
+    .replace("etb", "elite trainer box")
+    .replace("boosterbox", "booster box")
+    .replace("boosterpack", "booster pack")
+    .replace("3pack", "3 pack")
+    .replace(/[^a-z0-9 ]/g, "")
+    .trim()
+
+const itemName = normalize(item.name)
+
+const match = products.find(p =>
+  normalize(p.name).includes(itemName)
+)
 
     if (!match) {
       results.push({
