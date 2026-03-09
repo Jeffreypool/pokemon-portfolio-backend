@@ -29,6 +29,7 @@ export default async function handler(req, res) {
 
   const apiData = await response.json()
   const products = apiData.data || []
+  console.log(products.slice(0, 20).map(p => p.name))
 
   const results = []
 
