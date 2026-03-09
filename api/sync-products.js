@@ -7,37 +7,20 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
 
-  try {
-
-    const response = await fetch(
-      "https://pokemon-prices.p.rapidapi.com/products?page=1&per_page=200",
-      {
-        headers: {
-          "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-          "X-RapidAPI-Host": "pokemon-prices.p.rapidapi.com"
-        }
+  const response = await fetch(
+    "https://pokemon-prices.p.rapidapi.com/products",
+    {
+      headers: {
+        "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+        "X-RapidAPI-Host": "pokemon-prices.p.rapidapi.com"
       }
-    )
-
-    const apiData = await response.json()
-
-return res.status(200).json(apiData)
-     
-    for (const product of products) {
-
-      const price = product.prices?.cardmarket?.lowest || null
-
-      await supabase
-        .from('products')
-        .upsert({
-          id: product.id,
-          name: product.name,
-          slug: product.slug,
-          price: price,
-          updated_at: new Date()
-        })
-
     }
+  )
+
+  const data = await response.json()
+
+  res.status(200).json(data)
+}
 
     res.status(200).json({
       synced_products: products.length
