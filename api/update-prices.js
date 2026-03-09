@@ -27,15 +27,25 @@ export default async function handler(req, res) {
       }
     )
 
-    const data = await response.json()
+  if (!data || !data.results || data.results.length === 0) {
+  results.push({
+    name: item.name,
+    status: "not found"
+  })
+  continue
+}
 
-    if (!data || data.length === 0) {
-      results.push({
-        name: item.name,
-        status: "not found"
-      })
-      continue
-    }
+const product = data.results[0]
+
+if (!product.cardmarket || !product.cardmarket.first_english_nm) {
+  results.push({
+    name: item.name,
+    status: "no cardmarket price"
+  })
+  continue
+}
+
+const price = product.cardmarket.first_english_nm
 
     const price = data[0].cardmarket?.first_english_nm
 
