@@ -21,15 +21,15 @@ export default async function handler(req, res) {
 
     const query = encodeURIComponent(item.name)
 
-    const response = await fetch(
-      `https://pokemon-prices.p.rapidapi.com/products/search?q=${query}`,
-      {
-        headers: {
-          "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-          "X-RapidAPI-Host": "pokemon-prices.p.rapidapi.com"
-        }
-      }
-    )
+   const response = await fetch(
+  "https://pokemon-prices.p.rapidapi.com/products?page=1&per_page=200",
+  {
+    headers: {
+      "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+      "X-RapidAPI-Host": "pokemon-prices.p.rapidapi.com"
+    }
+  }
+)
 
     const data = await response.json()
 
