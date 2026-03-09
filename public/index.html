@@ -267,7 +267,35 @@ function renderTables(active,sold){
         <td class="center"><button onclick="sellItem('${i.id}')">💰</button></td>
         <td class="center"><button onclick="deleteItem('${i.id}')">❌</button></td>
       </tr>`
+    
   })
+  function enableInlineEdit(){
+  document.querySelectorAll(".editable").forEach(cell=>{
+    cell.onclick = function(){
+      const id = this.dataset.id
+      const oldValue = this.dataset.value
+
+      this.innerHTML = `<input type="number" value="${oldValue}" style="width:80px;">`
+      const input = this.querySelector("input")
+      input.focus()
+
+      input.onblur = async ()=>{
+        const newValue = Number(input.value)
+
+        await fetch('/api/update-item',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            id: id,
+            current_price: newValue
+          })
+        })
+
+        loadData()
+      }
+    }
+  })
+}
 
   const soldBody=document.getElementById("soldBody")
   soldBody.innerHTML=""
@@ -285,6 +313,7 @@ function renderTables(active,sold){
         <td>${i.sold_date?.split("T")[0]||""}</td>
       </tr>`
   })
+  enableInlineEdit()
 }
 
 function renderBarChart(active){
