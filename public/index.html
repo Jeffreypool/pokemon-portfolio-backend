@@ -407,53 +407,100 @@ document.addEventListener("DOMContentLoaded", () => {
   const resultsBox = document.getElementById("searchResults")
   const productIdField = document.getElementById("product_id")
 
-  if(!searchInput) return
+  let results = []
+  let selectedIndex = -1
+
+  function renderResults() {
+
+    resultsBox.innerHTML = ""
+
+    results.forEach((p, index) => {
+
+      const div = document.createElement("div")
+      div.style.padding = "6px"
+      div.style.cursor = "pointer"
+
+      if(index === selectedIndex){
+        div.style.background = "#1f2937"
+      }
+
+      div.textContent = `${p.name} (€${p.price ?? "?"})`
+
+      div.onclick = () => selectProduct(index)
+
+      resultsBox.appendChild(div)
+    })
+  }
+
+  function selectProduct(index){
+
+    const p = results[index]
+
+    searchInput.value = p.name
+    productIdField.value = p.id
+
+    const currentField = document.getElementById("current_price")
+    if(currentField){
+      currentField.value = p.price || ""
+    }
+
+    const typeField = document.getElementById("product_type")
+    if(typeField){
+      const name = p.name.toLowerCase()
+
+      if(name.includes("elite trainer")) typeField.value = "elite trainer box"
+      else if(name.includes("booster box")) typeField.value = "booster box"
+      else if(name.includes("booster")) typeField.value = "booster pack"
+      else if(name.includes("tin")) typeField.value = "tin"
+      else if(name.includes("collection")) typeField.value = "collection"
+      else typeField.value = "other"
+    }
+
+    resultsBox.innerHTML = ""
+    selectedIndex = -1
+  }
 
   searchInput.addEventListener("input", async () => {
 
     const q = searchInput.value.trim()
 
     if(q.length < 2){
-      resultsBox.innerHTML=""
+      resultsBox.innerHTML = ""
       return
     }
 
     const res = await fetch(`/api/search-products?q=${encodeURIComponent(q)}`)
-    const data = await res.json()
+    results = await res.json()
 
-    resultsBox.innerHTML=""
+    selectedIndex = -1
+    renderResults()
 
-    data.forEach(p=>{
-      const div=document.createElement("div")
-      div.style.padding="6px"
-      div.style.cursor="pointer"
-      div.textContent=`${p.name} (€${p.price ?? "?"})`
+  })
 
- div.onclick=()=>{
-  searchInput.value = p.name
-  productIdField.value = p.id
+  searchInput.addEventListener("keydown", e => {
 
-  // current price automatisch invullen
-  const currentField = document.getElementById("current_price")
-  if(currentField){
-    currentField.value = p.price || ""
-  }
+    if(!results.length) return
 
-  // product type automatisch bepalen
-  const typeField = document.getElementById("product_type")
-  if(typeField){
-    const name = p.name.toLowerCase()
+    if(e.key === "ArrowDown"){
+      e.preventDefault()
+      selectedIndex = (selectedIndex + 1) % results.length
+      renderResults()
+    }
 
-    if(name.includes("elite trainer")) typeField.value = "elite trainer box"
-    else if(name.includes("booster box")) typeField.value = "booster box"
-    else if(name.includes("booster")) typeField.value = "booster pack"
-    else if(name.includes("tin")) typeField.value = "tin"
-    else if(name.includes("collection")) typeField.value = "collection"
-    else typeField.value = "other"
-  }
+    if(e.key === "ArrowUp"){
+      e.preventDefault()
+      selectedIndex = (selectedIndex - 1 + results.length) % results.length
+      renderResults()
+    }
 
-  resultsBox.innerHTML=""
-}
+    if(e.key === "Enter" && selectedIndex >= 0){
+      e.preventDefault()
+      selectProduct(selectedIndex)
+    }
+
+  })
+
+})
 
       resultsBox.appendChild(div)
     })
