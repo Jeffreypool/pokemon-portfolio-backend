@@ -429,14 +429,27 @@ document.addEventListener("DOMContentLoaded", () => {
       div.style.cursor="pointer"
       div.textContent=`${p.name} (€${p.price ?? "?"})`
 
-     div.onclick=()=>{
-  searchInput.value=p.name
-  productIdField.value=p.id
+ div.onclick=()=>{
+  searchInput.value = p.name
+  productIdField.value = p.id
 
-  // automatisch current price invullen
+  // current price automatisch invullen
   const currentField = document.getElementById("current_price")
   if(currentField){
     currentField.value = p.price || ""
+  }
+
+  // product type automatisch bepalen
+  const typeField = document.getElementById("product_type")
+  if(typeField){
+    const name = p.name.toLowerCase()
+
+    if(name.includes("elite trainer")) typeField.value = "elite trainer box"
+    else if(name.includes("booster box")) typeField.value = "booster box"
+    else if(name.includes("booster")) typeField.value = "booster pack"
+    else if(name.includes("tin")) typeField.value = "tin"
+    else if(name.includes("collection")) typeField.value = "collection"
+    else typeField.value = "other"
   }
 
   resultsBox.innerHTML=""
