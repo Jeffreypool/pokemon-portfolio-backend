@@ -183,6 +183,13 @@
   <select id="filterType">
     <option value="all">All</option>
   </select>
+
+  <h3 style="margin-top:15px">Sort</h3>
+  <select id="sortType">
+    <option value="name">Name</option>
+    <option value="value">Value</option>
+    <option value="profit">Profit</option>
+  </select>
 </div>
 
 <div class="card">
@@ -247,6 +254,25 @@ function render(){
   const items=filter==="all"?allItems:allItems.filter(i=>i.product_type===filter)
   const active=items.filter(i=>!i.sold)
   const sold=items.filter(i=>i.sold)
+  const sort=document.getElementById("sortType")?.value||"name"
+
+if(sort==="name"){
+  active.sort((a,b)=>a.name.localeCompare(b.name))
+}
+
+if(sort==="value"){
+  active.sort((a,b)=>
+    (b.current_price*b.quantity) -
+    (a.current_price*a.quantity)
+  )
+}
+
+if(sort==="profit"){
+  active.sort((a,b)=>
+    ((b.current_price-b.purchase_price)*b.quantity) -
+    ((a.current_price-a.purchase_price)*a.quantity)
+  )
+}
 
   renderStats(active,sold)
   renderTables(active,sold)
@@ -472,6 +498,7 @@ document.getElementById("itemForm").addEventListener("submit",async e=>{
   }
 })
 document.getElementById("filterType").addEventListener("change",render)
+  document.getElementById("sortType").addEventListener("change",render)
 
 /* PRODUCT SEARCH */
 document.addEventListener("DOMContentLoaded", () => {
