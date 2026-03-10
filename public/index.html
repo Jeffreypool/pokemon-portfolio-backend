@@ -429,11 +429,18 @@ document.addEventListener("DOMContentLoaded", () => {
       div.style.cursor="pointer"
       div.textContent=`${p.name} (€${p.price ?? "?"})`
 
-      div.onclick=()=>{
-        searchInput.value=p.name
-        productIdField.value=p.id
-        resultsBox.innerHTML=""
-      }
+     div.onclick=()=>{
+  searchInput.value=p.name
+  productIdField.value=p.id
+
+  // automatisch current price invullen
+  const currentField = document.getElementById("current_price")
+  if(currentField){
+    currentField.value = p.price || ""
+  }
+
+  resultsBox.innerHTML=""
+}
 
       resultsBox.appendChild(div)
     })
