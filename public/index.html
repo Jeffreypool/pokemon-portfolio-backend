@@ -377,7 +377,12 @@ async function deleteItem(id){
   })
   loadData()
 }
-
+document.addEventListener("click", (e) => {
+  if(!resultsBox.contains(e.target) && e.target !== searchInput){
+    resultsBox.innerHTML = ""
+    selectedIndex = -1
+  }
+})
 document.getElementById("itemForm").addEventListener("submit",async e=>{
   e.preventDefault()
   const body={
@@ -470,10 +475,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const res = await fetch(`/api/search-products?q=${encodeURIComponent(q)}`)
-    results = await res.json()
+   results = await res.json()
 
-    selectedIndex = -1
-    renderResults()
+selectedIndex = results.length > 0 ? 0 : -1
+renderResults()
 
   })
 
