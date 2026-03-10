@@ -134,6 +134,25 @@
 <div class="card">
   <canvas id="barChart"></canvas>
 </div>
+  <div class="card">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px">
+
+    <div>
+      <h3>Top Performers</h3>
+      <table>
+        <tbody id="topWinners"></tbody>
+      </table>
+    </div>
+
+    <div>
+      <h3>Worst Performers</h3>
+      <table>
+        <tbody id="topLosers"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
 
 <div class="card">
   <canvas id="lineChart"></canvas>
@@ -221,6 +240,7 @@ function populateFilter(){
     select.innerHTML+=`<option value="${type}">${type}</option>`
   })
 }
+  
 
 function render(){
   const filter=document.getElementById("filterType")?.value||"all"
@@ -233,8 +253,50 @@ function render(){
   renderBarChart(active)
   renderLineChart(active)
   renderDonutChart(active)
+  renderTopPerformers(active)
 }
 
+  function renderTopPerformers(active){
+
+  const data = active.map(i=>{
+    const profit = (i.current_price - i.purchase_price) * i.quantity
+    return {
+      name: i.name,
+      profit
+    }
+  })
+
+  const winners = [...data]
+    .sort((a,b)=>b.profit-a.profit)
+    .slice(0,3)
+
+  const losers = [...data]
+    .sort((a,b)=>a.profit-b.profit)
+    .slice(0,3)
+
+  const winnersBody=document.getElementById("topWinners")
+  winnersBody.innerHTML=""
+
+  winners.forEach(w=>{
+    winnersBody.innerHTML+=`
+      <tr>
+        <td>${w.name}</td>
+        <td class="right green">€ ${w.profit.toLocaleString()}</td>
+      </tr>`
+  })
+
+  const losersBody=document.getElementById("topLosers")
+  losersBody.innerHTML=""
+
+  losers.forEach(l=>{
+    losersBody.innerHTML+=`
+      <tr>
+        <td>${l.name}</td>
+        <td class="right red">€ ${l.profit.toLocaleString()}</td>
+      </tr>`
+  })
+
+}
 function renderStats(active,sold){
   const invest=active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
   const current=active.reduce((s,i)=>s+i.current_price*i.quantity,0)
