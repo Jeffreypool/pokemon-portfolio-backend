@@ -11,7 +11,13 @@ function normalize(str) {
     .replace("etb", "elite trainer box")
     .replace("boosterbox", "booster box")
     .replace("boosterpack", "booster pack")
+    .replace("boosterbundle", "booster bundle")
+    .replace("3pack", "3 pack")
+    .replace("singel", "single")
+    .replace("chillign", "chilling")
+    .replace("shinig", "shining")
     .replace(/[^a-z0-9 ]/g, "")
+    .trim()
 }
 
 export default async function handler(req, res) {
@@ -30,9 +36,10 @@ export default async function handler(req, res) {
 
     const itemName = normalize(item.name)
 
-    const match = products.find(p =>
-      normalize(p.name).includes(itemName)
-    )
+  const match = products.find(p => {
+  const productName = normalize(p.name)
+  return productName.includes(itemName) || itemName.includes(productName)
+})
 
     if (!match) {
       results.push({
