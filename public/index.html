@@ -146,9 +146,11 @@
 <div class="card">
   <h3>Add Item</h3>
   <form id="itemForm">
+
     <input id="productSearch" placeholder="Search product..." autocomplete="off" required />
     <div id="searchResults" style="background:#0f1115;border:1px solid #2a3240;border-radius:6px;max-height:200px;overflow:auto"></div>
     <input type="hidden" id="product_id">
+
     <input id="quantity" type="number" value="1" required />
     <input id="purchase_price" type="number" placeholder="Purchase €" required />
     <input id="current_price" type="number" placeholder="Current €" required />
@@ -203,45 +205,6 @@
 let allItems=[]
 let barChart,lineChart,donutChart
 
-/* ---------- PRODUCT SEARCH ---------- */
-
-const searchInput = document.getElementById("productSearch")
-const resultsBox = document.getElementById("searchResults")
-const productIdField = document.getElementById("product_id")
-
-searchInput.addEventListener("input", async () => {
-
-  const q = searchInput.value.trim()
-
-  if(q.length < 2){
-    resultsBox.innerHTML=""
-    return
-  }
-
-  const res = await fetch(`/api/search-products?q=${encodeURIComponent(q)}`)
-  const data = await res.json()
-
-  resultsBox.innerHTML=""
-
-  data.forEach(p=>{
-    const div=document.createElement("div")
-    div.style.padding="6px"
-    div.style.cursor="pointer"
-    div.textContent=`${p.name} (€${p.price ?? "?"})`
-
-    div.onclick=()=>{
-      searchInput.value=p.name
-      productIdField.value=p.id
-      resultsBox.innerHTML=""
-    }
-
-    resultsBox.appendChild(div)
-  })
-
-})
-
-/* ---------- DASHBOARD LOGIC ---------- */
-
 async function loadData(){
   const res=await fetch('/api/dashboard')
   const data=await res.json()
@@ -267,6 +230,9 @@ function render(){
 
   renderStats(active,sold)
   renderTables(active,sold)
+  renderBarChart(active)
+  renderLineChart(active)
+  renderDonutChart(active)
 }
 
 function renderStats(active,sold){
@@ -280,6 +246,136 @@ function renderStats(active,sold){
   document.getElementById("activeValueKPI").innerHTML="€ "+current.toLocaleString()
   document.getElementById("realizedValueKPI").innerHTML="€ "+realized.toLocaleString()
   document.getElementById("totalROIKPI").innerHTML=totalROI+"%"
+}
+
+function renderTables(active,sold){
+  const body=document.getElementById("activeBody")
+  body.innerHTML=""
+
+  active.forEach(i=>{
+    const invest=i.purchase_price*i.quantity
+    const current=i.current_price*i.quantity
+    const profit=current-invest
+
+    body.innerHTML+=`
+      <tr>
+        <td>${i.name}</td>
+        <td class="center">${i.quantity}</td>
+        <td class="right">€ ${invest.toLocaleString()}</td>
+        <td class="right editable" data-id="${i.id}" data-value="${i.current_price}">
+            € ${current.toLocaleString()}
+        </td>
+        <td class="right ${profit>=0?'green':'red'}">
+          € ${profit.toLocaleString()}
+        </td>
+        <td class="center"><button onclick="sellItem('${i.id}')">💰</button></td>
+        <td class="center"><button onclick="deleteItem('${i.id}')">❌</button></td>
+      </tr>`
+  })
+
+  enableInlineEdit()
+
+  const soldBody=document.getElementById("soldBody")
+  soldBody.innerHTML=""
+
+  sold.forEach(i=>{
+    const realized=(i.sold_price-i.purchase_price)*i.quantity
+    soldBody.innerHTML+=`
+      <tr>
+        <td>${i.name}</td>
+        <td class="right">€ ${i.sold_price}</td>
+        <td class="right">€ ${i.purchase_price}</td>
+        <td class="right ${realized>=0?'green':'red'}">
+          € ${realized.toLocaleString()}
+        </td>
+        <td>${i.sold_date?.split("T")[0]||""}</td>
+      </tr>`
+  })
+}
+
+function enableInlineEdit(){
+  document.querySelectorAll(".editable").forEach(cell=>{
+    cell.onclick=function(){
+      const id=this.dataset.id
+      const oldValue=this.dataset.value
+      this.innerHTML=`<input type="number" value="${oldValue}" style="width:80px;">`
+      const input=this.querySelector("input")
+      input.focus()
+
+      input.onblur=async ()=>{
+        const newValue=Number(input.value)
+        await fetch('/api/update-item',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({id,current_price:newValue})
+        })
+        loadData()
+      }
+    }
+  })
+}
+
+function renderBarChart(active){
+  const invest=active.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
+  const current=active.reduce((s,i)=>s+i.current_price*i.quantity,0)
+
+  if(barChart) barChart.destroy()
+
+  barChart=new Chart(document.getElementById("barChart"),{
+    type:"bar",
+    data:{labels:["Investment","Current"],datasets:[{data:[invest,current],backgroundColor:["#444","#d4af37"]}]},
+    options:{plugins:{legend:{display:false}}}
+  })
+}
+
+function renderLineChart(active){
+  const values=active.map(i=>i.current_price*i.quantity)
+
+  if(lineChart) lineChart.destroy()
+
+  lineChart=new Chart(document.getElementById("lineChart"),{
+    type:"line",
+    data:{labels:values.map((_,i)=>i+1),datasets:[{data:values,borderColor:"#22c55e",backgroundColor:"rgba(34,197,94,0.15)",fill:true,tension:0.4}]},
+    options:{plugins:{legend:{display:false}}}
+  })
+}
+
+function renderDonutChart(active){
+  const grouped={}
+  active.forEach(i=>{
+    const value=i.current_price*i.quantity
+    const type=i.product_type||"Other"
+    if(!grouped[type]) grouped[type]=0
+    grouped[type]+=value
+  })
+
+  if(donutChart) donutChart.destroy()
+
+  donutChart=new Chart(document.getElementById("donutChart"),{
+    type:"doughnut",
+    data:{labels:Object.keys(grouped),datasets:[{data:Object.values(grouped),backgroundColor:["#22c55e","#d4af37","#3b82f6","#ef4444","#8b5cf6","#14b8a6"],borderWidth:0}]},
+    options:{cutout:"70%",plugins:{legend:{position:"bottom"}}}
+  })
+}
+
+async function sellItem(id){
+  const soldPrice=prompt("Enter selling price:")
+  if(!soldPrice) return
+  await fetch('/api/sell-item',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id,sold_price:Number(soldPrice)})
+  })
+  loadData()
+}
+
+async function deleteItem(id){
+  await fetch('/api/delete-item',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id})
+  })
+  loadData()
 }
 
 document.getElementById("itemForm").addEventListener("submit",async e=>{
@@ -303,6 +399,48 @@ document.getElementById("itemForm").addEventListener("submit",async e=>{
 })
 
 document.getElementById("filterType").addEventListener("change",render)
+
+/* PRODUCT SEARCH */
+document.addEventListener("DOMContentLoaded", () => {
+
+  const searchInput = document.getElementById("productSearch")
+  const resultsBox = document.getElementById("searchResults")
+  const productIdField = document.getElementById("product_id")
+
+  if(!searchInput) return
+
+  searchInput.addEventListener("input", async () => {
+
+    const q = searchInput.value.trim()
+
+    if(q.length < 2){
+      resultsBox.innerHTML=""
+      return
+    }
+
+    const res = await fetch(`/api/search-products?q=${encodeURIComponent(q)}`)
+    const data = await res.json()
+
+    resultsBox.innerHTML=""
+
+    data.forEach(p=>{
+      const div=document.createElement("div")
+      div.style.padding="6px"
+      div.style.cursor="pointer"
+      div.textContent=`${p.name} (€${p.price ?? "?"})`
+
+      div.onclick=()=>{
+        searchInput.value=p.name
+        productIdField.value=p.id
+        resultsBox.innerHTML=""
+      }
+
+      resultsBox.appendChild(div)
+    })
+
+  })
+
+})
 
 loadData()
 
