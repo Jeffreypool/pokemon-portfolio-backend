@@ -16,15 +16,15 @@ export default async function handler(req, res) {
 
     while (page <= MAX_PAGES) {
 
-      const response = await fetch(
-        `https://pokemon-tcg-api.p.rapidapi.com/products?page=${page}`,
-        {
-          headers: {
-            "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-            "X-RapidAPI-Host": "pokemon-tcg-api.p.rapidapi.com"
-          }
-        }
-      )
+     const response = await fetch(
+  `https://pokemon-tcg-api.p.rapidapi.com/products?page=${page}&limit=100&sort=-releaseDate`,
+  {
+    headers: {
+      "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+      "X-RapidAPI-Host": "pokemon-tcg-api.p.rapidapi.com"
+    }
+  }
+)
 
       const apiData = await response.json()
 
