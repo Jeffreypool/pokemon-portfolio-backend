@@ -10,12 +10,11 @@ export default async function handler(req, res) {
   try {
 
     let page = 1
-    let totalPages = 1
     let synced = 0
 
     const MAX_PAGES = 90
 
-    while (page <= totalPages && page <= MAX_PAGES) {
+    while (page <= MAX_PAGES) {
 
       const response = await fetch(
         `https://pokemon-tcg-api.p.rapidapi.com/products?page=${page}`,
@@ -31,12 +30,10 @@ export default async function handler(req, res) {
 
       const products = apiData.data || []
 
-      const totalProducts = apiData.paging?.total || products.length
-      const perPage = products.length || 20
+      console.log("PAGE", page, "PRODUCTS:", products.length)
 
-      totalPages = Math.ceil(totalProducts / perPage)
-
-      console.log("PAGE", page, "OF", totalPages)
+      // stop als er geen producten meer zijn
+      if (products.length === 0) break
 
       const rows = products.map(product => ({
         id: product.id,
@@ -46,16 +43,12 @@ export default async function handler(req, res) {
         updated_at: new Date()
       }))
 
-      if (rows.length) {
-        await supabase
-          .from("products")
-          .upsert(rows)
-      }
+      await supabase
+        .from("products")
+        .upsert(rows)
 
       synced += rows.length
       page++
-
-      if (products.length === 0) break
 
     }
 
