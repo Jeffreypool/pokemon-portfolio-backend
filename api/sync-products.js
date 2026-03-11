@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     let totalPages = 1
     let synced = 0
 
-    const MAX_PAGES = 25
+    const MAX_PAGES = 90
 
     while (page <= totalPages && page <= MAX_PAGES) {
 
