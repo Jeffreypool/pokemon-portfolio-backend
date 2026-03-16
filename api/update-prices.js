@@ -74,12 +74,14 @@ const match = products.find(p =>
       .from('portfolio_items')
       .update({ current_price: price })
       .eq('id', item.id)
+    
 
     results.push({
       name: item.name,
       new_price: price
     })
   }
+  await supabase.rpc('insert_price_snapshots')
 
   return res.status(200).json({
     updated: results
