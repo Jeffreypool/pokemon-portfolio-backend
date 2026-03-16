@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
       const apiData = await response.json()
       const products = apiData.data || []
-      console.log(products[0])
+      console.log("API PRODUCTS SAMPLE:", products.slice(0,5))
 
       if (products.length === 0) {
         hasMore = false
