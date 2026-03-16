@@ -277,7 +277,7 @@ if(sort==="profit"){
   renderStats(active,sold)
   renderTables(active,sold)
   renderBarChart(active)
-  renderLineChart(active)
+  renderLineChart()
   renderDonutChart(active)
   renderTopPerformers(active)
 }
@@ -416,16 +416,34 @@ function renderBarChart(active){
   })
 }
 
-function renderLineChart(active){
-  const values=active.map(i=>i.current_price*i.quantity)
+async function renderLineChart(){
+
+  const res = await fetch('/api/portfolio-growth')
+  const data = await res.json()
+
+  const labels = data.map(d => d.snapshot_date)
+  const values = data.map(d => d.value)
 
   if(lineChart) lineChart.destroy()
 
-  lineChart=new Chart(document.getElementById("lineChart"),{
+  lineChart = new Chart(document.getElementById("lineChart"),{
     type:"line",
-    data:{labels:values.map((_,i)=>i+1),datasets:[{data:values,borderColor:"#22c55e",backgroundColor:"rgba(34,197,94,0.15)",fill:true,tension:0.4}]},
-    options:{plugins:{legend:{display:false}}}
+    data:{
+      labels:labels,
+      datasets:[{
+        label:"Portfolio Value",
+        data:values,
+        borderColor:"#22c55e",
+        backgroundColor:"rgba(34,197,94,0.15)",
+        fill:true,
+        tension:0.4
+      }]
+    },
+    options:{
+      plugins:{legend:{display:false}}
+    }
   })
+
 }
 
 function renderDonutChart(active){
