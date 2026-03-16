@@ -41,9 +41,9 @@ export default async function handler(req, res) {
         if (!price) continue
 
         await supabase
-          .from('products')
-          .update({ price })
-          .eq('id', product.id)
+  .from('products')
+  .update({ price })
+  .eq('name', product.name)
 
         updated++
       }
