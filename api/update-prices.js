@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     while (hasMore) {
 
       const response = await fetch(
-        `https://pokemon-prices.p.rapidapi.com/products?page=${page}&per_page=200`,
+        `https://pokemon-tcg-api.p.rapidapi.com/products?page=${page}&per_page=200`,
         {
           headers: {
             "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
