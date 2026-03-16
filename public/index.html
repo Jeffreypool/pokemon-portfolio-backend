@@ -423,7 +423,8 @@ async function renderLineChart(){
 
   const labels = data.map(d => d.snapshot_date)
   const values = data.map(d => d.value)
-
+const investment = allItems.reduce((s,i)=>s+i.purchase_price*i.quantity,0)
+  
   if(lineChart) lineChart.destroy()
 
   lineChart = new Chart(document.getElementById("lineChart"),{
