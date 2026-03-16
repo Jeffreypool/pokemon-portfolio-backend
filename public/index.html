@@ -17,8 +17,8 @@
     h1 {
       text-align:center;
       letter-spacing:2px;
-      opacity:0.8;
-      margin-bottom:40px;
+      opacity:0.8;F
+      margin-bottom:40px;FF
     }
 
     .hero {
@@ -430,14 +430,23 @@ async function renderLineChart(){
     type:"line",
     data:{
       labels:labels,
-      datasets:[{
-        label:"Portfolio Value",
-        data:values,
-        borderColor:"#22c55e",
-        backgroundColor:"rgba(34,197,94,0.15)",
-        fill:true,
-        tension:0.4
-      }]
+     datasets:[
+  {
+    label:"Portfolio Value",
+    data:values,
+    borderColor:"#22c55e",
+    backgroundColor:"rgba(34,197,94,0.15)",
+    fill:true,
+    tension:0.4
+  },
+  {
+    label:"Investment",
+    data:Array(values.length).fill(investment),
+    borderColor:"#64748b",
+    borderDash:[6,6],
+    tension:0.4
+  }
+]
     },
     options:{
       plugins:{legend:{display:false}}
