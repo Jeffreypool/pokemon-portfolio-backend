@@ -26,6 +26,7 @@ export default async function handler(req, res) {
       )
 
       const apiData = await response.json()
+      console.log("API RAW:", apiData)
       const products = apiData.data || []
       console.log("API PRODUCTS SAMPLE:", products.slice(0,5))
 
