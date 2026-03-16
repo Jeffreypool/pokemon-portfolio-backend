@@ -11,15 +11,16 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Method not allowed' })
     }
 
-    const {
-      name,
-      set_name,
-      condition,
-      quantity,
-      purchase_price,
-      current_price,
-      product_type
-    } = req.body
+   const {
+  name,
+  product_id,
+  set_name,
+  condition,
+  quantity,
+  purchase_price,
+  current_price,
+  product_type
+} = req.body
 
     if (!name || !purchase_price || !current_price) {
       return res.status(400).json({ error: 'Missing required fields' })
@@ -27,17 +28,18 @@ export default async function handler(req, res) {
 
     const { data, error } = await supabase
       .from('portfolio_items')
-      .insert([
-        {
-          name,
-          set_name,
-          condition,
-          quantity: parseInt(quantity),
-          purchase_price: parseFloat(purchase_price),
-          current_price: parseFloat(current_price),
-          product_type   // 🔥 HIER zat het probleem
-        }
-      ])
+    .insert([
+  {
+    name,
+    product_id,
+    set_name,
+    condition,
+    quantity: parseInt(quantity),
+    purchase_price: parseFloat(purchase_price),
+    current_price: parseFloat(current_price),
+    product_type
+  }
+])
       .select()
 
     if (error) {
