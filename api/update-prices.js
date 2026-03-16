@@ -16,19 +16,17 @@ export default async function handler(req, res) {
     while (hasMore) {
 
       const response = await fetch(
-  `https://pokemon-tcg-api.p.rapidapi.com/episodes/21/products?page=${page}`,
-  {
-    headers: {
-      "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-      "X-RapidAPI-Host": "pokemon-tcg-api.p.rapidapi.com"
-    }
-  }
-)
+        `https://pokemon-tcg-api.p.rapidapi.com/products?page=${page}`,
+        {
+          headers: {
+            "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
+            "X-RapidAPI-Host": "pokemon-tcg-api.p.rapidapi.com"
+          }
+        }
+      )
 
       const apiData = await response.json()
-      console.log("API RAW:", apiData)
       const products = apiData.data || []
-      console.log("API PRODUCTS SAMPLE:", products.slice(0,5))
 
       if (products.length === 0) {
         hasMore = false
@@ -37,24 +35,30 @@ export default async function handler(req, res) {
 
       for (const product of products) {
 
-        if (!product.id) continue
+        const price = product.prices?.cardmarket?.lowest
 
-        const price = product.prices?.cardmarket?.lowest || null
         if (!price) continue
 
-        await supabase
-  .from('products')
-  .update({ price })
-  .eq('name', product.name)
+        const { error } = await supabase
+          .from("products")
+          .update({ price })
+          .eq("name", product.name)
 
-        updated++
+        if (!error) {
+          updated++
+        }
       }
 
       page++
+
+      // veiligheidsstop tegen te veel calls
+      if (page > 20) {
+        hasMore = false
+      }
+
     }
 
-    // snapshots maken voor grafiek
-    await supabase.rpc('insert_price_snapshots')
+    await supabase.rpc("insert_price_snapshots")
 
     return res.status(200).json({
       updated_products: updated
